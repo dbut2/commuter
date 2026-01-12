@@ -1,10 +1,14 @@
-FROM golang:alpine AS builder
+FROM golang:1.25-alpine AS builder
+
+WORKDIR commuter
 
 COPY go.mod go.mod
 COPY go.sum go.sum
+
 RUN go mod download
 
-COPY src/ src/
+COPY src src
+
 RUN go build -o /app ./src
 
 FROM golang:alpine AS final

@@ -9,21 +9,12 @@
 
 package strava
 
-type ClubActivity struct {
-	Athlete *MetaAthlete `json:"athlete,omitempty"`
-	// The name of the activity
-	Name string `json:"name,omitempty"`
-	// The activity's distance, in meters
-	Distance float32 `json:"distance,omitempty"`
-	// The activity's moving time, in seconds
-	MovingTime int32 `json:"moving_time,omitempty"`
-	// The activity's elapsed time, in seconds
-	ElapsedTime int32 `json:"elapsed_time,omitempty"`
-	// The activity's total elevation gain.
-	TotalElevationGain float32 `json:"total_elevation_gain,omitempty"`
-	// Deprecated. Prefer to use sport_type
-	Type_ *ActivityType `json:"type,omitempty"`
-	SportType *SportType `json:"sport_type,omitempty"`
-	// The activity's workout type
-	WorkoutType int32 `json:"workout_type,omitempty"`
+type ActivityZone struct {
+	Score               int32                  `json:"score,omitempty"`
+	DistributionBuckets *TimedZoneDistribution `json:"distribution_buckets,omitempty"`
+	Type_               string                 `json:"type,omitempty"`
+	SensorBased         bool                   `json:"sensor_based,omitempty"`
+	Points              int32                  `json:"points,omitempty"`
+	CustomZones         bool                   `json:"custom_zones,omitempty"`
+	Max                 int32                  `json:"max,omitempty"`
 }

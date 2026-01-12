@@ -7,21 +7,18 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"strings"
 	"time"
 
-	"github.com/antihax/optional"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/endpoints"
 
-	"dbut.dev/commute/src/strava-api"
+	"dbut.dev/commuter/src/strava"
 )
 
 func main() {
-	os.Setenv("STRAVA_CLIENT_ID", "")
-	os.Setenv("STRAVA_CLIENT_SECRET", "")
-
 	baseUrl := "https://commuter.dbut.dev"
 
 	oauth2Config := oauth2.Config{
@@ -33,13 +30,32 @@ func main() {
 	}
 
 	clientConfig := strava.NewConfiguration()
-	client := strava.NewAPIClient(clientConfig)
+	sClient := strava.NewAPIClient(clientConfig)
+	client := StravaClient((*stravaClient)(sClient))
 
 	rClient := &redisClient{client: redis.NewClient(&redis.Options{Addr: "redis:6379"})}
 
+	nedds := Challenge(func(day int, distance float64, duration time.Duration) string {
+		return fmt.Sprintf(strings.TrimSpace(`
+Nedd's Uncomfortable Challenge: Day %d/10
+Distance: %.1fkm/160.9km (%.1f%%)
+Total Time: %s
+`), day, distance, distance/160.934*100, durationString(duration))
+	}, "20/10/2024", "29/10/2024", "Australia/Melbourne")
+
+	biwa := Challenge(func(day int, distance float64, duration time.Duration) string {
+		return fmt.Sprintf(strings.TrimSpace(`
+Lake Biwa Cycle: Day %d
+Total Distance: %.1fkm
+Total Time: %s
+`), day, distance, durationString(duration))
+	}, "02/11/2025", "08/11/2025", "Japan", TypeRide)
+
 	updaters := []Updater{
 		Publicise,
-		Nedds,
+		Commute,
+		nedds,
+		biwa,
 	}
 
 	e := gin.Default()
@@ -63,7 +79,7 @@ func main() {
 
 		ctx := authContext(c, token)
 
-		athlete, _, err := client.AthletesApi.GetLoggedInAthlete(ctx)
+		athlete, _, err := sClient.AthletesApi.GetLoggedInAthlete(ctx)
 		if err != nil {
 			c.Error(err)
 			c.Status(http.StatusInternalServerError)
@@ -96,7 +112,7 @@ func main() {
 	}
 }
 
-func webhook(rClient *redisClient, config oauth2.Config, client *strava.APIClient, updaters []Updater) func(c *gin.Context) {
+func webhook(rClient *redisClient, config oauth2.Config, client StravaClient, updaters []Updater) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		if validate(c) {
 			return
@@ -137,32 +153,17 @@ func webhook(rClient *redisClient, config oauth2.Config, client *strava.APIClien
 
 		ctx = authContext(ctx, token)
 
-		detailedActivity, _, err := client.ActivitiesApi.GetActivityById(ctx, wh.ObjectID, nil)
-		if err != nil {
-			c.Error(err)
-			fmt.Println(err.Error())
-			c.Status(http.StatusInternalServerError)
-			return
-		}
-
-		updatableActivity := updatable(&detailedActivity)
-		updated := false
+		activity := client.GetActivity(ctx, int(wh.ObjectID))
+		original := activity
 		for _, u := range updaters {
-			updated = updated || u(ctx, client, &detailedActivity, updatableActivity)
+			activity = u(ctx, client, activity)
 		}
+		updated := activity != original
 
 		fmt.Printf("Updated: %t\n", updated)
 
 		if updated {
-			_, _, err = client.ActivitiesApi.UpdateActivityById(ctx, wh.ObjectID, &strava.ActivitiesApiUpdateActivityByIdOpts{
-				Body: optional.NewInterface(*updatableActivity),
-			})
-			if err != nil {
-				c.Error(err)
-				fmt.Println(err.Error())
-				c.Status(http.StatusInternalServerError)
-				return
-			}
+			client.UpdateActivity(ctx, activity)
 		}
 	}
 }

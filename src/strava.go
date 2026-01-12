@@ -3,11 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
-
-	"dbut.dev/commute/src/strava-api"
-	"github.com/antihax/optional"
 )
 
 type StravaWebhook struct {
@@ -24,29 +20,28 @@ type StravaWebhook struct {
 	}
 }
 
-type Updater func(ctx context.Context, client *strava.APIClient, detailedActivity *strava.DetailedActivity, updatableActivity *strava.UpdatableActivity) bool
+type Updater func(ctx context.Context, client StravaClient, activity Activity) Activity
 
-func Publicise(ctx context.Context, client *strava.APIClient, detailedActivity *strava.DetailedActivity, updatableActivity *strava.UpdatableActivity) bool {
-	wasHidden := detailedActivity.HideFromHome
-	hidden := shouldBeHidden(detailedActivity)
-	fmt.Printf("Activity hidden: %t\n", hidden)
-	updatableActivity.HideFromHome = hidden
-	return wasHidden != hidden
+func Publicise(ctx context.Context, client StravaClient, activity Activity) Activity {
+	activity.Hidden = isCommute(activity)
+	fmt.Printf("Activity hidden: %t\n", activity.Hidden)
+	return activity
 }
 
-func shouldBeHidden(activity *strava.DetailedActivity) bool {
-	if *activity.SportType != strava.RIDE_SportType {
-		fmt.Println("Activity not a ride, public", *activity.SportType)
+func Commute(ctx context.Context, client StravaClient, activity Activity) Activity {
+	activity.Commute = isCommute(activity)
+	fmt.Printf("Acitivty commute: %t\n", activity.Commute)
+	return activity
+}
+
+func isCommute(activity Activity) bool {
+	if activity.Type != TypeRide {
+		fmt.Println("Activity not a ride, public", activity.Type)
 		return false
 	}
 
-	if activity.StartLatlng == nil || activity.EndLatlng == nil {
-		fmt.Println("Activity doesn't have start and end coords, cannot ascertain if commute, public")
-		return false
-	}
-
-	if (isNear(activity.StartLatlng, home) && isNear(activity.EndLatlng, work)) ||
-		(isNear(activity.StartLatlng, work) && isNear(activity.EndLatlng, home)) {
+	if (isNear(activity.StartLoc, home) && isNear(activity.EndLoc, work)) ||
+		(isNear(activity.StartLoc, work) && isNear(activity.EndLoc, home)) {
 		fmt.Println("Activity is near home and work, private")
 		return true
 	}
@@ -54,11 +49,13 @@ func shouldBeHidden(activity *strava.DetailedActivity) bool {
 	return false
 }
 
-func isNear(latLng *strava.LatLng, point [2]float64) bool {
-	lat1, lat2 := latLng[0], point[0]
-	lng1, lng2 := latLng[1], point[1]
+func isNear(a, b [2]float64) bool {
+	fmt.Println(a, b)
 
-	return (lat1 >= lat2-margin && lat1 <= lat2+margin) && (lng1 >= lng2-margin && lng1 <= lng2+margin)
+	fmt.Println(a[0] - b[0])
+	fmt.Println(a[1] - b[1])
+
+	return (a[0] >= b[0]-margin && a[0] <= b[0]+margin) && (a[1] >= b[1]-margin && a[1] <= b[1]+margin)
 }
 
 var (
@@ -67,19 +64,6 @@ var (
 )
 
 var margin = 0.005
-
-func updatable(activity *strava.DetailedActivity) *strava.UpdatableActivity {
-	return &strava.UpdatableActivity{
-		Commute:      activity.Commute,
-		Trainer:      activity.Trainer,
-		HideFromHome: activity.HideFromHome,
-		Description:  activity.Description,
-		Name:         activity.Name,
-		Type_:        activity.Type_,
-		SportType:    activity.SportType,
-		GearId:       activity.GearId,
-	}
-}
 
 var melbourne = must(time.LoadLocation("Australia/Melbourne"))
 
@@ -90,69 +74,18 @@ func must[T any](v T, err error) T {
 	return v
 }
 
-func Nedds(ctx context.Context, client *strava.APIClient, detailedActivity *strava.DetailedActivity, updatableActivity *strava.UpdatableActivity) bool {
-	if !isNeddsSport(*detailedActivity.SportType) {
-		fmt.Println("Not a run or walk", *detailedActivity.SportType)
-		fmt.Println("Not Nedds")
-		return false
+var locationCache = make(map[string]*time.Location)
+
+func location(loc string) *time.Location {
+	if v, ok := locationCache[loc]; ok {
+		return v
 	}
-
-	if !isNeddsDates(detailedActivity.StartDate) {
-		fmt.Println("Outside dates", detailedActivity.StartDate.In(melbourne))
-		fmt.Println("Not Nedds")
-		return false
-	}
-
-	fmt.Println("Is Nedds")
-
-	list, _, err := client.ActivitiesApi.GetLoggedInAthleteActivities(ctx, &strava.ActivitiesApiGetLoggedInAthleteActivitiesOpts{
-		After:   optional.NewInt32(int32(neddsStartDate.Unix())),
-		Before:  optional.NewInt32(int32(neddsEndDate.Unix())),
-		PerPage: optional.NewInt32(100),
-	})
-	if err != nil {
-		panic(err.Error())
-	}
-
-	totalTime := time.Duration(0)
-	totalKms := float64(0)
-
-	for _, item := range list {
-		if !isNeddsDates(item.StartDate) {
-			continue
-		}
-
-		if !isNeddsSport(*item.SportType) {
-			continue
-		}
-
-		if item.StartDate.After(detailedActivity.StartDate) {
-			continue
-		}
-
-		totalTime += time.Second * time.Duration(item.MovingTime)
-		totalKms += float64(item.Distance) / 1000
-	}
-
-	var day = int(detailedActivity.StartDate.Sub(neddsStartDate).Hours()/24) + 1
-
-	desc := fmt.Sprintf(strings.TrimSpace(neddsTemplate),
-		day,
-		totalKms,
-		(totalKms/160.934)*100,
-		duration(totalTime),
-	)
-
-	if detailedActivity.Description == desc {
-		fmt.Println("Description already updated")
-		return false
-	}
-
-	updatableActivity.Description = desc
-	return true
+	l := must(time.LoadLocation(loc))
+	locationCache[loc] = l
+	return l
 }
 
-func duration(d time.Duration) string {
+func durationString(d time.Duration) string {
 	hours := int(d.Hours())
 	d -= time.Duration(hours) * time.Hour
 	minutes := int(d.Minutes())
@@ -162,21 +95,36 @@ func duration(d time.Duration) string {
 	return fmt.Sprintf("%d:%02d:%02d", hours, minutes, seconds)
 }
 
-var neddsTemplate = `
-Nedd's Uncomfortable Challenge: Day %d/10
-Distance: %.1fkm/160.9km (%.1f%%)
-Total Time: %s
-`
+func Challenge(formatter func(day int, distance float64, duration time.Duration) string, start, end, loc string, types ...Type) Updater {
+	startTime := must(time.ParseInLocation("02/01/2006", start, location(loc)))
+	endTime := must(time.ParseInLocation("02/01/2006", end, location(loc))).AddDate(0, 0, 1).Add(-time.Nanosecond)
+	filter := ActivityFilter{
+		After:  startTime,
+		Before: endTime,
+		Types:  types,
+	}
 
-var (
-	neddsStartDate = time.Date(2024, time.October, 20, 0, 0, 0, 0, melbourne)
-	neddsEndDate   = time.Date(2024, time.October, 29, 23, 59, 59, 1e9-1, melbourne)
-)
+	fmt.Println(startTime, endTime)
 
-func isNeddsSport(sport strava.SportType) bool {
-	return sport == strava.RUN_SportType || sport == strava.WALK_SportType
-}
+	return func(ctx context.Context, client StravaClient, activity Activity) Activity {
+		if !filter.Valid(activity) {
+			return activity
+		}
 
-func isNeddsDates(date time.Time) bool {
-	return date.After(neddsStartDate) && date.Before(neddsEndDate)
+		day := int(activity.Time.Sub(startTime).Hours()/24) + 1
+		distance := float64(0)
+		duration := time.Duration(0)
+
+		for _, item := range client.ListActivities(ctx, filter) {
+			if !filter.Valid(item) {
+				continue
+			}
+
+			distance += item.Distance
+			duration += item.MovingDuration
+		}
+
+		activity.Description = formatter(day, distance, duration)
+		return activity
+	}
 }

@@ -1,4 +1,3 @@
-
 /*
  * Strava API v3
  *
@@ -12,12 +11,11 @@ package strava
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
-	"fmt"
-	"github.com/antihax/optional"
 )
 
 // Linger please
@@ -25,59 +23,40 @@ var (
 	_ context.Context
 )
 
-type SegmentsApiService service
+type StreamsApiService service
 
 /*
-SegmentsApiService Explore segments
-Returns the top 10 segments matching a specified query.
- * @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- * @param bounds The latitude and longitude for two points describing a rectangular boundary for the search: [southwest corner latitutde, southwest corner longitude, northeast corner latitude, northeast corner longitude]
- * @param optional nil or *SegmentsApiExploreSegmentsOpts - Optional Parameters:
-     * @param "ActivityType" (optional.String) -  Desired activity type.
-     * @param "MinCat" (optional.Int32) -  The minimum climbing category.
-     * @param "MaxCat" (optional.Int32) -  The maximum climbing category.
+StreamsApiService Get Activity Streams
+Returns the given activity&#39;s streams. Requires activity:read scope. Requires activity:read_all scope for Only Me activities.
+  - @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+  - @param id The identifier of the activity.
+  - @param keys Desired stream types.
+  - @param keyByType Must be true.
 
-@return ExplorerResponse
+@return StreamSet
 */
-
-type SegmentsApiExploreSegmentsOpts struct { 
-	ActivityType optional.String
-	MinCat optional.Int32
-	MaxCat optional.Int32
-}
-
-func (a *SegmentsApiService) ExploreSegments(ctx context.Context, bounds []float32, localVarOptionals *SegmentsApiExploreSegmentsOpts) (ExplorerResponse, *http.Response, error) {
+func (a *StreamsApiService) GetActivityStreams(ctx context.Context, id int64, keys []string, keyByType bool) (StreamSet, *http.Response, error) {
 	var (
-		localVarHttpMethod = strings.ToUpper("Get")
-		localVarPostBody   interface{}
-		localVarFileName   string
-		localVarFileBytes  []byte
-		localVarReturnValue ExplorerResponse
+		localVarHttpMethod  = strings.ToUpper("Get")
+		localVarPostBody    interface{}
+		localVarFileName    string
+		localVarFileBytes   []byte
+		localVarReturnValue StreamSet
 	)
 
 	// create path and map variables
-	localVarPath := a.client.cfg.BasePath + "/segments/explore"
+	localVarPath := a.client.cfg.BasePath + "/activities/{id}/streams"
+	localVarPath = strings.Replace(localVarPath, "{"+"id"+"}", fmt.Sprintf("%v", id), -1)
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
 	localVarFormParams := url.Values{}
-	if len(bounds) < 4 {
-		return localVarReturnValue, nil, reportError("bounds must have at least 4 elements")
-	}
-	if len(bounds) > 4 {
-		return localVarReturnValue, nil, reportError("bounds must have less than 4 elements")
+	if len(keys) < 1 {
+		return localVarReturnValue, nil, reportError("keys must have at least 1 elements")
 	}
 
-	localVarQueryParams.Add("bounds", parameterToString(bounds, "csv"))
-	if localVarOptionals != nil && localVarOptionals.ActivityType.IsSet() {
-		localVarQueryParams.Add("activity_type", parameterToString(localVarOptionals.ActivityType.Value(), ""))
-	}
-	if localVarOptionals != nil && localVarOptionals.MinCat.IsSet() {
-		localVarQueryParams.Add("min_cat", parameterToString(localVarOptionals.MinCat.Value(), ""))
-	}
-	if localVarOptionals != nil && localVarOptionals.MaxCat.IsSet() {
-		localVarQueryParams.Add("max_cat", parameterToString(localVarOptionals.MaxCat.Value(), ""))
-	}
+	localVarQueryParams.Add("keys", parameterToString(keys, "csv"))
+	localVarQueryParams.Add("key_by_type", parameterToString(keyByType, ""))
 	// to determine the Content-Type header
 	localVarHttpContentTypes := []string{}
 
@@ -113,38 +92,38 @@ func (a *SegmentsApiService) ExploreSegments(ctx context.Context, bounds []float
 
 	if localVarHttpResponse.StatusCode < 300 {
 		// If we succeed, return the data, otherwise pass on to decode error.
-		err = a.client.decode(&localVarReturnValue, localVarBody, localVarHttpResponse.Header.Get("Content-Type"));
+		err = a.client.decode(&localVarReturnValue, localVarBody, localVarHttpResponse.Header.Get("Content-Type"))
 		return localVarReturnValue, localVarHttpResponse, err
 	}
 
 	if localVarHttpResponse.StatusCode >= 300 {
 		newErr := GenericSwaggerError{
-			body: localVarBody,
+			body:  localVarBody,
 			error: localVarHttpResponse.Status,
 		}
-		
+
 		if localVarHttpResponse.StatusCode == 200 {
-			var v ExplorerResponse
-			err = a.client.decode(&v, localVarBody, localVarHttpResponse.Header.Get("Content-Type"));
-				if err != nil {
-					newErr.error = err.Error()
-					return localVarReturnValue, localVarHttpResponse, newErr
-				}
-				newErr.model = v
+			var v StreamSet
+			err = a.client.decode(&v, localVarBody, localVarHttpResponse.Header.Get("Content-Type"))
+			if err != nil {
+				newErr.error = err.Error()
 				return localVarReturnValue, localVarHttpResponse, newErr
+			}
+			newErr.model = v
+			return localVarReturnValue, localVarHttpResponse, newErr
 		}
-		
+
 		if localVarHttpResponse.StatusCode == 0 {
 			var v Fault
-			err = a.client.decode(&v, localVarBody, localVarHttpResponse.Header.Get("Content-Type"));
-				if err != nil {
-					newErr.error = err.Error()
-					return localVarReturnValue, localVarHttpResponse, newErr
-				}
-				newErr.model = v
+			err = a.client.decode(&v, localVarBody, localVarHttpResponse.Header.Get("Content-Type"))
+			if err != nil {
+				newErr.error = err.Error()
 				return localVarReturnValue, localVarHttpResponse, newErr
+			}
+			newErr.model = v
+			return localVarReturnValue, localVarHttpResponse, newErr
 		}
-		
+
 		return localVarReturnValue, localVarHttpResponse, newErr
 	}
 
@@ -152,135 +131,24 @@ func (a *SegmentsApiService) ExploreSegments(ctx context.Context, bounds []float
 }
 
 /*
-SegmentsApiService List Starred Segments
-List of the authenticated athlete&#39;s starred segments. Private segments are filtered out unless requested by a token with read_all scope.
- * @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- * @param optional nil or *SegmentsApiGetLoggedInAthleteStarredSegmentsOpts - Optional Parameters:
-     * @param "Page" (optional.Int32) -  Page number. Defaults to 1.
-     * @param "PerPage" (optional.Int32) -  Number of items per page. Defaults to 30.
+StreamsApiService Get Route Streams
+Returns the given route&#39;s streams. Requires read_all scope for private routes.
+  - @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+  - @param id The identifier of the route.
 
-@return []SummarySegment
+@return StreamSet
 */
-
-type SegmentsApiGetLoggedInAthleteStarredSegmentsOpts struct { 
-	Page optional.Int32
-	PerPage optional.Int32
-}
-
-func (a *SegmentsApiService) GetLoggedInAthleteStarredSegments(ctx context.Context, localVarOptionals *SegmentsApiGetLoggedInAthleteStarredSegmentsOpts) ([]SummarySegment, *http.Response, error) {
+func (a *StreamsApiService) GetRouteStreams(ctx context.Context, id int64) (StreamSet, *http.Response, error) {
 	var (
-		localVarHttpMethod = strings.ToUpper("Get")
-		localVarPostBody   interface{}
-		localVarFileName   string
-		localVarFileBytes  []byte
-		localVarReturnValue []SummarySegment
+		localVarHttpMethod  = strings.ToUpper("Get")
+		localVarPostBody    interface{}
+		localVarFileName    string
+		localVarFileBytes   []byte
+		localVarReturnValue StreamSet
 	)
 
 	// create path and map variables
-	localVarPath := a.client.cfg.BasePath + "/segments/starred"
-
-	localVarHeaderParams := make(map[string]string)
-	localVarQueryParams := url.Values{}
-	localVarFormParams := url.Values{}
-
-	if localVarOptionals != nil && localVarOptionals.Page.IsSet() {
-		localVarQueryParams.Add("page", parameterToString(localVarOptionals.Page.Value(), ""))
-	}
-	if localVarOptionals != nil && localVarOptionals.PerPage.IsSet() {
-		localVarQueryParams.Add("per_page", parameterToString(localVarOptionals.PerPage.Value(), ""))
-	}
-	// to determine the Content-Type header
-	localVarHttpContentTypes := []string{}
-
-	// set Content-Type header
-	localVarHttpContentType := selectHeaderContentType(localVarHttpContentTypes)
-	if localVarHttpContentType != "" {
-		localVarHeaderParams["Content-Type"] = localVarHttpContentType
-	}
-
-	// to determine the Accept header
-	localVarHttpHeaderAccepts := []string{"application/json"}
-
-	// set Accept header
-	localVarHttpHeaderAccept := selectHeaderAccept(localVarHttpHeaderAccepts)
-	if localVarHttpHeaderAccept != "" {
-		localVarHeaderParams["Accept"] = localVarHttpHeaderAccept
-	}
-	r, err := a.client.prepareRequest(ctx, localVarPath, localVarHttpMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, localVarFileName, localVarFileBytes)
-	if err != nil {
-		return localVarReturnValue, nil, err
-	}
-
-	localVarHttpResponse, err := a.client.callAPI(r)
-	if err != nil || localVarHttpResponse == nil {
-		return localVarReturnValue, localVarHttpResponse, err
-	}
-
-	localVarBody, err := ioutil.ReadAll(localVarHttpResponse.Body)
-	localVarHttpResponse.Body.Close()
-	if err != nil {
-		return localVarReturnValue, localVarHttpResponse, err
-	}
-
-	if localVarHttpResponse.StatusCode < 300 {
-		// If we succeed, return the data, otherwise pass on to decode error.
-		err = a.client.decode(&localVarReturnValue, localVarBody, localVarHttpResponse.Header.Get("Content-Type"));
-		return localVarReturnValue, localVarHttpResponse, err
-	}
-
-	if localVarHttpResponse.StatusCode >= 300 {
-		newErr := GenericSwaggerError{
-			body: localVarBody,
-			error: localVarHttpResponse.Status,
-		}
-		
-		if localVarHttpResponse.StatusCode == 200 {
-			var v []SummarySegment
-			err = a.client.decode(&v, localVarBody, localVarHttpResponse.Header.Get("Content-Type"));
-				if err != nil {
-					newErr.error = err.Error()
-					return localVarReturnValue, localVarHttpResponse, newErr
-				}
-				newErr.model = v
-				return localVarReturnValue, localVarHttpResponse, newErr
-		}
-		
-		if localVarHttpResponse.StatusCode == 0 {
-			var v Fault
-			err = a.client.decode(&v, localVarBody, localVarHttpResponse.Header.Get("Content-Type"));
-				if err != nil {
-					newErr.error = err.Error()
-					return localVarReturnValue, localVarHttpResponse, newErr
-				}
-				newErr.model = v
-				return localVarReturnValue, localVarHttpResponse, newErr
-		}
-		
-		return localVarReturnValue, localVarHttpResponse, newErr
-	}
-
-	return localVarReturnValue, localVarHttpResponse, nil
-}
-
-/*
-SegmentsApiService Get Segment
-Returns the specified segment. read_all scope required in order to retrieve athlete-specific segment information, or to retrieve private segments.
- * @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- * @param id The identifier of the segment.
-
-@return DetailedSegment
-*/
-func (a *SegmentsApiService) GetSegmentById(ctx context.Context, id int64) (DetailedSegment, *http.Response, error) {
-	var (
-		localVarHttpMethod = strings.ToUpper("Get")
-		localVarPostBody   interface{}
-		localVarFileName   string
-		localVarFileBytes  []byte
-		localVarReturnValue DetailedSegment
-	)
-
-	// create path and map variables
-	localVarPath := a.client.cfg.BasePath + "/segments/{id}"
+	localVarPath := a.client.cfg.BasePath + "/routes/{id}/streams"
 	localVarPath = strings.Replace(localVarPath, "{"+"id"+"}", fmt.Sprintf("%v", id), -1)
 
 	localVarHeaderParams := make(map[string]string)
@@ -322,38 +190,38 @@ func (a *SegmentsApiService) GetSegmentById(ctx context.Context, id int64) (Deta
 
 	if localVarHttpResponse.StatusCode < 300 {
 		// If we succeed, return the data, otherwise pass on to decode error.
-		err = a.client.decode(&localVarReturnValue, localVarBody, localVarHttpResponse.Header.Get("Content-Type"));
+		err = a.client.decode(&localVarReturnValue, localVarBody, localVarHttpResponse.Header.Get("Content-Type"))
 		return localVarReturnValue, localVarHttpResponse, err
 	}
 
 	if localVarHttpResponse.StatusCode >= 300 {
 		newErr := GenericSwaggerError{
-			body: localVarBody,
+			body:  localVarBody,
 			error: localVarHttpResponse.Status,
 		}
-		
+
 		if localVarHttpResponse.StatusCode == 200 {
-			var v DetailedSegment
-			err = a.client.decode(&v, localVarBody, localVarHttpResponse.Header.Get("Content-Type"));
-				if err != nil {
-					newErr.error = err.Error()
-					return localVarReturnValue, localVarHttpResponse, newErr
-				}
-				newErr.model = v
+			var v StreamSet
+			err = a.client.decode(&v, localVarBody, localVarHttpResponse.Header.Get("Content-Type"))
+			if err != nil {
+				newErr.error = err.Error()
 				return localVarReturnValue, localVarHttpResponse, newErr
+			}
+			newErr.model = v
+			return localVarReturnValue, localVarHttpResponse, newErr
 		}
-		
+
 		if localVarHttpResponse.StatusCode == 0 {
 			var v Fault
-			err = a.client.decode(&v, localVarBody, localVarHttpResponse.Header.Get("Content-Type"));
-				if err != nil {
-					newErr.error = err.Error()
-					return localVarReturnValue, localVarHttpResponse, newErr
-				}
-				newErr.model = v
+			err = a.client.decode(&v, localVarBody, localVarHttpResponse.Header.Get("Content-Type"))
+			if err != nil {
+				newErr.error = err.Error()
 				return localVarReturnValue, localVarHttpResponse, newErr
+			}
+			newErr.model = v
+			return localVarReturnValue, localVarHttpResponse, newErr
 		}
-		
+
 		return localVarReturnValue, localVarHttpResponse, newErr
 	}
 
@@ -361,31 +229,37 @@ func (a *SegmentsApiService) GetSegmentById(ctx context.Context, id int64) (Deta
 }
 
 /*
-SegmentsApiService Star Segment
-Stars/Unstars the given segment for the authenticated athlete. Requires profile:write scope.
- * @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- * @param id The identifier of the segment to star.
- * @param starred If true, star the segment; if false, unstar the segment.
+StreamsApiService Get Segment Effort Streams
+Returns a set of streams for a segment effort completed by the authenticated athlete. Requires read_all scope.
+  - @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+  - @param id The identifier of the segment effort.
+  - @param keys The types of streams to return.
+  - @param keyByType Must be true.
 
-@return DetailedSegment
+@return StreamSet
 */
-func (a *SegmentsApiService) StarSegment(ctx context.Context, id int64, starred bool) (DetailedSegment, *http.Response, error) {
+func (a *StreamsApiService) GetSegmentEffortStreams(ctx context.Context, id int64, keys []string, keyByType bool) (StreamSet, *http.Response, error) {
 	var (
-		localVarHttpMethod = strings.ToUpper("Put")
-		localVarPostBody   interface{}
-		localVarFileName   string
-		localVarFileBytes  []byte
-		localVarReturnValue DetailedSegment
+		localVarHttpMethod  = strings.ToUpper("Get")
+		localVarPostBody    interface{}
+		localVarFileName    string
+		localVarFileBytes   []byte
+		localVarReturnValue StreamSet
 	)
 
 	// create path and map variables
-	localVarPath := a.client.cfg.BasePath + "/segments/{id}/starred"
+	localVarPath := a.client.cfg.BasePath + "/segment_efforts/{id}/streams"
 	localVarPath = strings.Replace(localVarPath, "{"+"id"+"}", fmt.Sprintf("%v", id), -1)
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}
 	localVarFormParams := url.Values{}
+	if len(keys) < 1 {
+		return localVarReturnValue, nil, reportError("keys must have at least 1 elements")
+	}
 
+	localVarQueryParams.Add("keys", parameterToString(keys, "csv"))
+	localVarQueryParams.Add("key_by_type", parameterToString(keyByType, ""))
 	// to determine the Content-Type header
 	localVarHttpContentTypes := []string{}
 
@@ -403,7 +277,6 @@ func (a *SegmentsApiService) StarSegment(ctx context.Context, id int64, starred 
 	if localVarHttpHeaderAccept != "" {
 		localVarHeaderParams["Accept"] = localVarHttpHeaderAccept
 	}
-	localVarFormParams.Add("starred", parameterToString(starred, ""))
 	r, err := a.client.prepareRequest(ctx, localVarPath, localVarHttpMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, localVarFileName, localVarFileBytes)
 	if err != nil {
 		return localVarReturnValue, nil, err
@@ -422,41 +295,145 @@ func (a *SegmentsApiService) StarSegment(ctx context.Context, id int64, starred 
 
 	if localVarHttpResponse.StatusCode < 300 {
 		// If we succeed, return the data, otherwise pass on to decode error.
-		err = a.client.decode(&localVarReturnValue, localVarBody, localVarHttpResponse.Header.Get("Content-Type"));
+		err = a.client.decode(&localVarReturnValue, localVarBody, localVarHttpResponse.Header.Get("Content-Type"))
 		return localVarReturnValue, localVarHttpResponse, err
 	}
 
 	if localVarHttpResponse.StatusCode >= 300 {
 		newErr := GenericSwaggerError{
-			body: localVarBody,
+			body:  localVarBody,
 			error: localVarHttpResponse.Status,
 		}
-		
+
 		if localVarHttpResponse.StatusCode == 200 {
-			var v DetailedSegment
-			err = a.client.decode(&v, localVarBody, localVarHttpResponse.Header.Get("Content-Type"));
-				if err != nil {
-					newErr.error = err.Error()
-					return localVarReturnValue, localVarHttpResponse, newErr
-				}
-				newErr.model = v
+			var v StreamSet
+			err = a.client.decode(&v, localVarBody, localVarHttpResponse.Header.Get("Content-Type"))
+			if err != nil {
+				newErr.error = err.Error()
 				return localVarReturnValue, localVarHttpResponse, newErr
+			}
+			newErr.model = v
+			return localVarReturnValue, localVarHttpResponse, newErr
 		}
-		
+
 		if localVarHttpResponse.StatusCode == 0 {
 			var v Fault
-			err = a.client.decode(&v, localVarBody, localVarHttpResponse.Header.Get("Content-Type"));
-				if err != nil {
-					newErr.error = err.Error()
-					return localVarReturnValue, localVarHttpResponse, newErr
-				}
-				newErr.model = v
+			err = a.client.decode(&v, localVarBody, localVarHttpResponse.Header.Get("Content-Type"))
+			if err != nil {
+				newErr.error = err.Error()
 				return localVarReturnValue, localVarHttpResponse, newErr
+			}
+			newErr.model = v
+			return localVarReturnValue, localVarHttpResponse, newErr
 		}
-		
+
 		return localVarReturnValue, localVarHttpResponse, newErr
 	}
 
 	return localVarReturnValue, localVarHttpResponse, nil
 }
 
+/*
+StreamsApiService Get Segment Streams
+Returns the given segment&#39;s streams. Requires read_all scope for private segments.
+  - @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+  - @param id The identifier of the segment.
+  - @param keys The types of streams to return.
+  - @param keyByType Must be true.
+
+@return StreamSet
+*/
+func (a *StreamsApiService) GetSegmentStreams(ctx context.Context, id int64, keys []string, keyByType bool) (StreamSet, *http.Response, error) {
+	var (
+		localVarHttpMethod  = strings.ToUpper("Get")
+		localVarPostBody    interface{}
+		localVarFileName    string
+		localVarFileBytes   []byte
+		localVarReturnValue StreamSet
+	)
+
+	// create path and map variables
+	localVarPath := a.client.cfg.BasePath + "/segments/{id}/streams"
+	localVarPath = strings.Replace(localVarPath, "{"+"id"+"}", fmt.Sprintf("%v", id), -1)
+
+	localVarHeaderParams := make(map[string]string)
+	localVarQueryParams := url.Values{}
+	localVarFormParams := url.Values{}
+	if len(keys) < 1 {
+		return localVarReturnValue, nil, reportError("keys must have at least 1 elements")
+	}
+
+	localVarQueryParams.Add("keys", parameterToString(keys, "csv"))
+	localVarQueryParams.Add("key_by_type", parameterToString(keyByType, ""))
+	// to determine the Content-Type header
+	localVarHttpContentTypes := []string{}
+
+	// set Content-Type header
+	localVarHttpContentType := selectHeaderContentType(localVarHttpContentTypes)
+	if localVarHttpContentType != "" {
+		localVarHeaderParams["Content-Type"] = localVarHttpContentType
+	}
+
+	// to determine the Accept header
+	localVarHttpHeaderAccepts := []string{"application/json"}
+
+	// set Accept header
+	localVarHttpHeaderAccept := selectHeaderAccept(localVarHttpHeaderAccepts)
+	if localVarHttpHeaderAccept != "" {
+		localVarHeaderParams["Accept"] = localVarHttpHeaderAccept
+	}
+	r, err := a.client.prepareRequest(ctx, localVarPath, localVarHttpMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, localVarFileName, localVarFileBytes)
+	if err != nil {
+		return localVarReturnValue, nil, err
+	}
+
+	localVarHttpResponse, err := a.client.callAPI(r)
+	if err != nil || localVarHttpResponse == nil {
+		return localVarReturnValue, localVarHttpResponse, err
+	}
+
+	localVarBody, err := ioutil.ReadAll(localVarHttpResponse.Body)
+	localVarHttpResponse.Body.Close()
+	if err != nil {
+		return localVarReturnValue, localVarHttpResponse, err
+	}
+
+	if localVarHttpResponse.StatusCode < 300 {
+		// If we succeed, return the data, otherwise pass on to decode error.
+		err = a.client.decode(&localVarReturnValue, localVarBody, localVarHttpResponse.Header.Get("Content-Type"))
+		return localVarReturnValue, localVarHttpResponse, err
+	}
+
+	if localVarHttpResponse.StatusCode >= 300 {
+		newErr := GenericSwaggerError{
+			body:  localVarBody,
+			error: localVarHttpResponse.Status,
+		}
+
+		if localVarHttpResponse.StatusCode == 200 {
+			var v StreamSet
+			err = a.client.decode(&v, localVarBody, localVarHttpResponse.Header.Get("Content-Type"))
+			if err != nil {
+				newErr.error = err.Error()
+				return localVarReturnValue, localVarHttpResponse, newErr
+			}
+			newErr.model = v
+			return localVarReturnValue, localVarHttpResponse, newErr
+		}
+
+		if localVarHttpResponse.StatusCode == 0 {
+			var v Fault
+			err = a.client.decode(&v, localVarBody, localVarHttpResponse.Header.Get("Content-Type"))
+			if err != nil {
+				newErr.error = err.Error()
+				return localVarReturnValue, localVarHttpResponse, newErr
+			}
+			newErr.model = v
+			return localVarReturnValue, localVarHttpResponse, newErr
+		}
+
+		return localVarReturnValue, localVarHttpResponse, newErr
+	}
+
+	return localVarReturnValue, localVarHttpResponse, nil
+}

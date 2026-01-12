@@ -9,20 +9,16 @@
 
 package strava
 
-type UpdatableActivity struct {
-	// Whether this activity is a commute
-	Commute bool `json:"commute,omitempty"`
-	// Whether this activity was recorded on a training machine
-	Trainer bool `json:"trainer,omitempty"`
-	// Whether this activity is muted
-	HideFromHome bool `json:"hide_from_home,omitempty"`
-	// The description of the activity
-	Description string `json:"description,omitempty"`
-	// The name of the activity
-	Name string `json:"name,omitempty"`
-	// Deprecated. Prefer to use sport_type. In a request where both type and sport_type are present, this field will be ignored
-	Type_ *ActivityType `json:"type,omitempty"`
-	SportType *SportType `json:"sport_type,omitempty"`
-	// Identifier for the gear associated with the activity. ‘none’ clears gear from activity
-	GearId string `json:"gear_id,omitempty"`
+type StreamSet struct {
+	Time           *TimeStream           `json:"time,omitempty"`
+	Distance       *DistanceStream       `json:"distance,omitempty"`
+	Latlng         *LatLngStream         `json:"latlng,omitempty"`
+	Altitude       *AltitudeStream       `json:"altitude,omitempty"`
+	VelocitySmooth *SmoothVelocityStream `json:"velocity_smooth,omitempty"`
+	Heartrate      *HeartrateStream      `json:"heartrate,omitempty"`
+	Cadence        *CadenceStream        `json:"cadence,omitempty"`
+	Watts          *PowerStream          `json:"watts,omitempty"`
+	Temp           *TemperatureStream    `json:"temp,omitempty"`
+	Moving         *MovingStream         `json:"moving,omitempty"`
+	GradeSmooth    *SmoothGradeStream    `json:"grade_smooth,omitempty"`
 }

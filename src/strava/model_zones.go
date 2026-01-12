@@ -9,9 +9,7 @@
 
 package strava
 
-type PhotosSummaryPrimary struct {
-	Id int64 `json:"id,omitempty"`
-	Source int32 `json:"source,omitempty"`
-	UniqueId string `json:"unique_id,omitempty"`
-	Urls map[string]string `json:"urls,omitempty"`
+type Zones struct {
+	HeartRate *HeartRateZoneRanges `json:"heart_rate,omitempty"`
+	Power     *PowerZoneRanges     `json:"power,omitempty"`
 }

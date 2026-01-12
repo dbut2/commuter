@@ -9,16 +9,8 @@
 
 package strava
 
-type StreamSet struct {
-	Time *TimeStream `json:"time,omitempty"`
-	Distance *DistanceStream `json:"distance,omitempty"`
-	Latlng *LatLngStream `json:"latlng,omitempty"`
-	Altitude *AltitudeStream `json:"altitude,omitempty"`
-	VelocitySmooth *SmoothVelocityStream `json:"velocity_smooth,omitempty"`
-	Heartrate *HeartrateStream `json:"heartrate,omitempty"`
-	Cadence *CadenceStream `json:"cadence,omitempty"`
-	Watts *PowerStream `json:"watts,omitempty"`
-	Temp *TemperatureStream `json:"temp,omitempty"`
-	Moving *MovingStream `json:"moving,omitempty"`
-	GradeSmooth *SmoothGradeStream `json:"grade_smooth,omitempty"`
+type HeartRateZoneRanges struct {
+	// Whether the athlete has set their own custom heart rate zones
+	CustomZones bool        `json:"custom_zones,omitempty"`
+	Zones       *ZoneRanges `json:"zones,omitempty"`
 }

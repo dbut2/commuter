@@ -9,23 +9,21 @@
 
 package strava
 
-type ExplorerSegment struct {
-	// The unique identifier of this segment
-	Id int64 `json:"id,omitempty"`
-	// The name of this segment
+type ClubActivity struct {
+	Athlete *MetaAthlete `json:"athlete,omitempty"`
+	// The name of the activity
 	Name string `json:"name,omitempty"`
-	// The category of the climb [0, 5]. Higher is harder ie. 5 is Hors catégorie, 0 is uncategorized in climb_category. If climb_category = 5, climb_category_desc = HC. If climb_category = 2, climb_category_desc = 3.
-	ClimbCategory int32 `json:"climb_category,omitempty"`
-	// The description for the category of the climb
-	ClimbCategoryDesc string `json:"climb_category_desc,omitempty"`
-	// The segment's average grade, in percents
-	AvgGrade float32 `json:"avg_grade,omitempty"`
-	StartLatlng *LatLng `json:"start_latlng,omitempty"`
-	EndLatlng *LatLng `json:"end_latlng,omitempty"`
-	// The segments's evelation difference, in meters
-	ElevDifference float32 `json:"elev_difference,omitempty"`
-	// The segment's distance, in meters
+	// The activity's distance, in meters
 	Distance float32 `json:"distance,omitempty"`
-	// The polyline of the segment
-	Points string `json:"points,omitempty"`
+	// The activity's moving time, in seconds
+	MovingTime int32 `json:"moving_time,omitempty"`
+	// The activity's elapsed time, in seconds
+	ElapsedTime int32 `json:"elapsed_time,omitempty"`
+	// The activity's total elevation gain.
+	TotalElevationGain float32 `json:"total_elevation_gain,omitempty"`
+	// Deprecated. Prefer to use sport_type
+	Type_     *ActivityType `json:"type,omitempty"`
+	SportType *SportType    `json:"sport_type,omitempty"`
+	// The activity's workout type
+	WorkoutType int32 `json:"workout_type,omitempty"`
 }

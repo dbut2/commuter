@@ -9,12 +9,9 @@
 
 package strava
 
-type ActivityZone struct {
-	Score int32 `json:"score,omitempty"`
-	DistributionBuckets *TimedZoneDistribution `json:"distribution_buckets,omitempty"`
-	Type_ string `json:"type,omitempty"`
-	SensorBased bool `json:"sensor_based,omitempty"`
-	Points int32 `json:"points,omitempty"`
-	CustomZones bool `json:"custom_zones,omitempty"`
-	Max int32 `json:"max,omitempty"`
+type PhotosSummaryPrimary struct {
+	Id       int64             `json:"id,omitempty"`
+	Source   int32             `json:"source,omitempty"`
+	UniqueId string            `json:"unique_id,omitempty"`
+	Urls     map[string]string `json:"urls,omitempty"`
 }
