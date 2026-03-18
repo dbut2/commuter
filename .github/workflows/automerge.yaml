@@ -1,0 +1,25 @@
+name: Automerge
+
+on:
+  pull_request:
+  pull_request_target:
+    types: [labeled]
+  issue_comment:
+    types: [created]
+
+jobs:
+  automerge:
+    uses: dbut2/x/.github/workflows/automerge.yaml@main
+    permissions:
+      checks: read
+    with:
+      required-checks: |
+        - Build Check
+        - Docker Compose
+        - Go Generate
+        - Go Mod Tidy
+        - Go Test
+        - golangci-lint
+    secrets:
+      app-id: ${{ secrets.GH_APP_ID }}
+      app-private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}

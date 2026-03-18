@@ -1,28 +1,16 @@
 services:
   commuter:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      additional_contexts:
-        workspace: ..
+    build: .
+    ports:
+      - "8080:8080"
     environment:
+      - STRAVA_CLIENT_ID=placeholder
+      - STRAVA_CLIENT_SECRET=placeholder
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-    networks:
-      - default
-      - web
-    labels:
-      traefik.enable: "true"
-      traefik.docker.network: "web"
-      traefik.http.routers.commuter.entrypoints: "web"
-      traefik.http.routers.commuter.rule: "Host(`commuter.dbut.dev`)"
-    restart: unless-stopped
+      - PORT=8080
+    depends_on:
+      - redis
 
   redis:
     image: redis:alpine
-    hostname: redis
-    restart: unless-stopped
-
-networks:
-  web:
-    external: true

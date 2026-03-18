@@ -1,0 +1,60 @@
+name: commuter
+
+services:
+  commuter:
+    image: ghcr.io/dbut2/commuter:latest
+    environment:
+      - STRAVA_CLIENT_ID=${STRAVA_CLIENT_ID}
+      - STRAVA_CLIENT_SECRET=${STRAVA_CLIENT_SECRET}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PORT=8080
+    networks:
+      - web
+      - default
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: "web"
+      traefik.http.routers.commuter.entrypoints: "web"
+      traefik.http.routers.commuter.rule: "Host(`commuter.dbut.dev`)"
+      traefik.http.services.commuter.loadbalancer.server.port: "8080"
+      com.centurylinklabs.watchtower.scope: "commuter"
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  redis:
+    image: redis:alpine
+    hostname: redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+
+  watchtower:
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DOCKER_API_VERSION=1.40
+      - WATCHTOWER_HTTP_API_UPDATE=true
+      - WATCHTOWER_HTTP_API_TOKEN=${WATCHTOWER_TOKEN}
+      - WATCHTOWER_HTTP_API_PERIODIC_POLLS=false
+      - WATCHTOWER_SCOPE=commuter
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: "web"
+      traefik.http.routers.watchtower-commuter.entrypoints: "web"
+      traefik.http.routers.watchtower-commuter.rule: "Host(`watchtower-commuter.dbut.dev`)"
+      traefik.http.services.watchtower-commuter.loadbalancer.server.port: "8080"
+      com.centurylinklabs.watchtower.scope: "commuter"
+    networks:
+      - web
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+
+networks:
+  web:
+    external: true

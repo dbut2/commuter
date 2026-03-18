@@ -1,4 +1,4 @@
-FROM golang:1.25-alpine AS builder
+FROM golang:1.26-alpine AS builder
 
 WORKDIR commuter
 
@@ -11,7 +11,7 @@ COPY src src
 
 RUN go build -o /app ./src
 
-FROM golang:alpine AS final
+FROM alpine AS final
 
 COPY --from=builder /app /app
 
