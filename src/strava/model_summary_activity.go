@@ -59,6 +59,8 @@ type SummaryActivity struct {
 	// The number of Instagram and Strava photos for this activity
 	TotalPhotoCount int32        `json:"total_photo_count,omitempty"`
 	Map_            *PolylineMap `json:"map,omitempty"`
+	// The name of the device used to record the activity
+	DeviceName string `json:"device_name,omitempty"`
 	// Whether this activity was recorded on a training machine
 	Trainer bool `json:"trainer,omitempty"`
 	// Whether this activity is a commute

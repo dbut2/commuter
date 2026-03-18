@@ -21,5 +21,5 @@ type Waypoint struct {
 	// A description of the waypoint (optional)
 	Description string `json:"description,omitempty"`
 	// The number meters along the route that the waypoint is located
-	DistanceIntoRoute int32 `json:"distance_into_route,omitempty"`
+	DistanceIntoRoute float32 `json:"distance_into_route,omitempty"`
 }

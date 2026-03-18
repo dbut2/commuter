@@ -76,7 +76,6 @@ func (a *AthletesApiService) GetLoggedInAthlete(ctx context.Context) (DetailedAt
 	}
 
 	localVarBody, err := ioutil.ReadAll(localVarHttpResponse.Body)
-	fmt.Println(string(localVarBody))
 	localVarHttpResponse.Body.Close()
 	if err != nil {
 		return localVarReturnValue, localVarHttpResponse, err
