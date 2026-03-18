@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"runtime"
 	"strings"
 	"time"
 	_ "time/tzdata"
@@ -73,7 +72,7 @@ Total Time: %s
 		code := c.Query("code")
 		token, err := oauth2Config.Exchange(c, code)
 		if err != nil {
-			c.Error(err)
+			_ = c.Error(err)
 			c.Status(http.StatusInternalServerError)
 			return
 		}
@@ -82,16 +81,16 @@ Total Time: %s
 
 		athlete, _, err := sClient.AthletesApi.GetLoggedInAthlete(ctx)
 		if err != nil {
-			c.Error(err)
+			_ = c.Error(err)
 			c.Status(http.StatusInternalServerError)
 			return
 		}
 
-		c.SetCookie("token", token.AccessToken, int(token.Expiry.Sub(time.Now()).Seconds()), "/", "commuter.dbut.dev", true, true)
+		c.SetCookie("token", token.AccessToken, int(time.Until(token.Expiry).Seconds()), "/", "commuter.dbut.dev", true, true)
 
 		err = rClient.StoreToken(ctx, athlete.Id, token)
 		if err != nil {
-			c.Error(err)
+			_ = c.Error(err)
 			c.Status(http.StatusInternalServerError)
 			return
 		}
@@ -122,7 +121,7 @@ func webhook(rClient *redisClient, config oauth2.Config, client StravaClient, up
 		wh := StravaWebhook{}
 		err := c.BindJSON(&wh)
 		if err != nil {
-			c.Error(err)
+			_ = c.Error(err)
 			fmt.Println(err.Error())
 			c.Status(http.StatusInternalServerError)
 			return
@@ -146,7 +145,7 @@ func webhook(rClient *redisClient, config oauth2.Config, client StravaClient, up
 
 		token, err := rClient.GetToken(ctx, config, wh.OwnerID)
 		if err != nil {
-			c.Error(err)
+			_ = c.Error(err)
 			fmt.Println(err.Error())
 			c.Status(http.StatusInternalServerError)
 			return
@@ -185,28 +184,6 @@ func validate(c *gin.Context) bool {
 	})
 
 	return true
-}
-
-func cookieToken(r *http.Request) (oauth2.Token, bool) {
-	accessToken, err := r.Cookie("token")
-	if err != nil {
-		fmt.Printf("failed to get token from cookie: %e", err)
-		return oauth2.Token{}, false
-	}
-	return oauth2.Token{AccessToken: accessToken.Value}, true
-}
-
-func debug() {
-	_, file, line, _ := runtime.Caller(1)
-	fmt.Printf("%s:%d", file, line)
-}
-
-func getAuthedCtx(r *http.Request) context.Context {
-	token, ok := cookieToken(r)
-	if !ok {
-		return r.Context()
-	}
-	return authContext(r.Context(), &token)
 }
 
 func authContext(ctx context.Context, token *oauth2.Token) context.Context {

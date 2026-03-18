@@ -65,8 +65,6 @@ var (
 
 var margin = 0.005
 
-var melbourne = must(time.LoadLocation("Australia/Melbourne"))
-
 func must[T any](v T, err error) T {
 	if err != nil {
 		panic(err.Error())
