@@ -52,7 +52,6 @@ Total Time: %s
 	}, "02/11/2025", "08/11/2025", "Japan", TypeRide)
 
 	updaters := []Updater{
-		Publicise,
 		Commute,
 		nedds,
 		biwa,
