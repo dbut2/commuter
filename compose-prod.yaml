@@ -9,6 +9,10 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - PORT=8080
+      - HOME_LAT=${HOME_LAT}
+      - HOME_LNG=${HOME_LNG}
+      - WORK_LAT=${WORK_LAT}
+      - WORK_LNG=${WORK_LNG}
     networks:
       - web
       - default
