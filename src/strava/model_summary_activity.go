@@ -43,9 +43,9 @@ type SummaryActivity struct {
 	// The time at which the activity was started in the local timezone.
 	StartDateLocal time.Time `json:"start_date_local,omitempty"`
 	// The timezone of the activity
-	Timezone    string  `json:"timezone,omitempty"`
-	StartLatlng *LatLng `json:"start_latlng,omitempty"`
-	EndLatlng   *LatLng `json:"end_latlng,omitempty"`
+	Timezone    string      `json:"timezone,omitempty"`
+	StartLatlng *[2]float64 `json:"start_latlng,omitempty"`
+	EndLatlng   *[2]float64 `json:"end_latlng,omitempty"`
 	// The number of achievements gained during this activity
 	AchievementCount int32 `json:"achievement_count,omitempty"`
 	// The number of kudos given for this activity

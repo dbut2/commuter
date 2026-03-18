@@ -1,7 +1,0 @@
-.swagger-codegen/VERSION
-api/
-docs/
-.gitignore
-.travis.yml
-git_push.sh
-README.md

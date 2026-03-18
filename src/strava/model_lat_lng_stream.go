@@ -17,5 +17,5 @@ type LatLngStream struct {
 	// The base series used in the case the stream was downsampled
 	SeriesType string `json:"series_type,omitempty"`
 	// The sequence of lat/long values for this stream
-	Data []LatLng `json:"data,omitempty"`
+	Data [][2]float64 `json:"data,omitempty"`
 }
