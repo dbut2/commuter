@@ -24,21 +24,22 @@ type StravaWebhook struct {
 
 type Updater func(ctx context.Context, client StravaClient, activity Activity) Activity
 
-func Publicise(ctx context.Context, client StravaClient, activity Activity) Activity {
-	activity.Hidden = isCommute(activity)
-	fmt.Printf("Activity hidden: %t\n", activity.Hidden)
-	return activity
-}
-
 func Commute(ctx context.Context, client StravaClient, activity Activity) Activity {
-	activity.Commute = isCommute(activity)
-	fmt.Printf("Acitivty commute: %t\n", activity.Commute)
+	commute := isCommute(activity)
+	activity.Hidden = commute
+	activity.Commute = commute
+	fmt.Printf("Activity commute: %t\n", commute)
 	return activity
 }
 
 func isCommute(activity Activity) bool {
 	if activity.Type != TypeRide {
 		fmt.Println("Activity not a ride, public", activity.Type)
+		return false
+	}
+
+	if activity.Distance > 15 {
+		fmt.Println("Activity too far to be a commute", activity.Distance)
 		return false
 	}
 
