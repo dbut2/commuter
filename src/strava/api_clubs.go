@@ -254,7 +254,7 @@ func (a *ClubsApiService) GetClubAdminsById(ctx context.Context, id int64, local
 
 /*
 ClubsApiService Get Club
-Returns a given club using its identifier.
+Returns a given a club using its identifier.
   - @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
   - @param id The identifier of the club.
 

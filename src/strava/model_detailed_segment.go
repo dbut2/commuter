@@ -28,9 +28,9 @@ type DetailedSegment struct {
 	// The segments's highest elevation, in meters
 	ElevationHigh float32 `json:"elevation_high,omitempty"`
 	// The segments's lowest elevation, in meters
-	ElevationLow float32 `json:"elevation_low,omitempty"`
-	StartLatlng  *LatLng `json:"start_latlng,omitempty"`
-	EndLatlng    *LatLng `json:"end_latlng,omitempty"`
+	ElevationLow float32     `json:"elevation_low,omitempty"`
+	StartLatlng  *[2]float64 `json:"start_latlng,omitempty"`
+	EndLatlng    *[2]float64 `json:"end_latlng,omitempty"`
 	// The category of the climb [0, 5]. Higher is harder ie. 5 is Hors catégorie, 0 is uncategorized in climb_category.
 	ClimbCategory int32 `json:"climb_category,omitempty"`
 	// The segments's city.

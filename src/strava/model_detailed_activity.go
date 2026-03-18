@@ -43,9 +43,9 @@ type DetailedActivity struct {
 	// The time at which the activity was started in the local timezone.
 	StartDateLocal time.Time `json:"start_date_local,omitempty"`
 	// The timezone of the activity
-	Timezone    string  `json:"timezone,omitempty"`
-	StartLatlng *LatLng `json:"start_latlng,omitempty"`
-	EndLatlng   *LatLng `json:"end_latlng,omitempty"`
+	Timezone    string      `json:"timezone,omitempty"`
+	StartLatlng *[2]float64 `json:"start_latlng,omitempty"`
+	EndLatlng   *[2]float64 `json:"end_latlng,omitempty"`
 	// The number of achievements gained during this activity
 	AchievementCount int32 `json:"achievement_count,omitempty"`
 	// The number of kudos given for this activity
@@ -59,6 +59,8 @@ type DetailedActivity struct {
 	// The number of Instagram and Strava photos for this activity
 	TotalPhotoCount int32        `json:"total_photo_count,omitempty"`
 	Map_            *PolylineMap `json:"map,omitempty"`
+	// The name of the device used to record the activity
+	DeviceName string `json:"device_name,omitempty"`
 	// Whether this activity was recorded on a training machine
 	Trainer bool `json:"trainer,omitempty"`
 	// Whether this activity is a commute
@@ -100,8 +102,6 @@ type DetailedActivity struct {
 	// The number of kilocalories consumed during this activity
 	Calories       float32                 `json:"calories,omitempty"`
 	SegmentEfforts []DetailedSegmentEffort `json:"segment_efforts,omitempty"`
-	// The name of the device used to record the activity
-	DeviceName string `json:"device_name,omitempty"`
 	// The token used to embed a Strava activity
 	EmbedToken string `json:"embed_token,omitempty"`
 	// The splits of this activity in metric units (for runs)

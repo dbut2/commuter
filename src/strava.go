@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
 	"time"
 )
 
@@ -58,9 +60,17 @@ func isNear(a, b [2]float64) bool {
 	return (a[0] >= b[0]-margin && a[0] <= b[0]+margin) && (a[1] >= b[1]-margin && a[1] <= b[1]+margin)
 }
 
+func envFloat(key string) float64 {
+	v, err := strconv.ParseFloat(os.Getenv(key), 64)
+	if err != nil {
+		panic(fmt.Sprintf("invalid or missing env var %s: %v", key, err))
+	}
+	return v
+}
+
 var (
-	home = [2]float64{0, 0}
-	work = [2]float64{0, 0}
+	home = [2]float64{envFloat("HOME_LAT"), envFloat("HOME_LNG")}
+	work = [2]float64{envFloat("WORK_LAT"), envFloat("WORK_LNG")}
 )
 
 var margin = 0.005
