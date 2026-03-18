@@ -29,7 +29,10 @@ func (r *redisClient) GetToken(ctx context.Context, client oauth2.Config, strava
 		if err != nil {
 			return nil, err
 		}
-		r.StoreToken(ctx, stravaUser, token)
+		err = r.StoreToken(ctx, stravaUser, token)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return token, nil
 }
