@@ -1,0 +1,29 @@
+users:
+  57192790:
+    - type: commute
+      home: [-37.817365, 144.997991]
+      work: [-37.821655, 144.943522]
+      max_distance: 15
+      margin: 0.005
+      types: ["Ride"]
+
+    - type: challenge
+      name: "Nedd's Uncomfortable Challenge"
+      start: "20/10/2024"
+      end: "29/10/2024"
+      timezone: "Australia/Melbourne"
+      template: |-
+        Nedd's Uncomfortable Challenge: Day {{.Day}}/10
+        Distance: {{printf "%.1f" .Distance}}km
+        Total Time: {{.Duration}}
+
+    - type: challenge
+      name: "Lake Biwa Cycle"
+      start: "02/11/2025"
+      end: "08/11/2025"
+      timezone: "Japan"
+      types: ["Ride"]
+      template: |-
+        Lake Biwa Cycle: Day {{.Day}}
+        Total Distance: {{printf "%.1f" .Distance}}km
+        Total Time: {{.Duration}}

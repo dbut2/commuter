@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 	_ "time/tzdata"
 
@@ -35,27 +34,7 @@ func main() {
 
 	rClient := &redisClient{client: redis.NewClient(&redis.Options{Addr: "redis:6379"})}
 
-	nedds := Challenge(func(day int, distance float64, duration time.Duration) string {
-		return fmt.Sprintf(strings.TrimSpace(`
-Nedd's Uncomfortable Challenge: Day %d/10
-Distance: %.1fkm/160.9km (%.1f%%)
-Total Time: %s
-`), day, distance, distance/160.934*100, durationString(duration))
-	}, "20/10/2024", "29/10/2024", "Australia/Melbourne")
-
-	biwa := Challenge(func(day int, distance float64, duration time.Duration) string {
-		return fmt.Sprintf(strings.TrimSpace(`
-Lake Biwa Cycle: Day %d
-Total Distance: %.1fkm
-Total Time: %s
-`), day, distance, durationString(duration))
-	}, "02/11/2025", "08/11/2025", "Japan", TypeRide)
-
-	updaters := []Updater{
-		Commute,
-		nedds,
-		biwa,
-	}
+	cfg := loadConfig()
 
 	e := gin.Default()
 
@@ -97,8 +76,8 @@ Total Time: %s
 		c.Redirect(http.StatusFound, baseUrl)
 	})
 
-	e.GET("/strava/webhook", webhook(rClient, oauth2Config, client, updaters))
-	e.POST("/strava/webhook", webhook(rClient, oauth2Config, client, updaters))
+	e.GET("/strava/webhook", webhook(rClient, oauth2Config, client, cfg))
+	e.POST("/strava/webhook", webhook(rClient, oauth2Config, client, cfg))
 
 	fmt.Println("Starting server")
 
@@ -111,7 +90,7 @@ Total Time: %s
 	}
 }
 
-func webhook(rClient *redisClient, config oauth2.Config, client StravaClient, updaters []Updater) func(c *gin.Context) {
+func webhook(rClient *redisClient, config oauth2.Config, client StravaClient, cfg Config) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		if validate(c) {
 			return
@@ -135,6 +114,12 @@ func webhook(rClient *redisClient, config oauth2.Config, client StravaClient, up
 
 		if wh.AspectType != "create" && wh.AspectType != "update" {
 			fmt.Println("not a create or update")
+			return
+		}
+
+		updaters, ok := cfg.UpdatersForUser(wh.OwnerID)
+		if !ok {
+			fmt.Printf("WARNING: no config for user %d\n", wh.OwnerID)
 			return
 		}
 

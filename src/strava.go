@@ -3,8 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
-	"strconv"
+	"slices"
 	"time"
 )
 
@@ -24,27 +23,29 @@ type StravaWebhook struct {
 
 type Updater func(ctx context.Context, client StravaClient, activity Activity) Activity
 
-func Commute(ctx context.Context, client StravaClient, activity Activity) Activity {
-	commute := isCommute(activity)
-	activity.Hidden = commute
-	activity.Commute = commute
-	fmt.Printf("Activity commute: %t\n", commute)
-	return activity
+func Commute(home, work [2]float64, distance, margin float64, types ...Type) Updater {
+	return func(ctx context.Context, client StravaClient, activity Activity) Activity {
+		if len(types) > 0 && !slices.Contains(types, activity.Type) {
+			fmt.Println("Activity not matching type filter", activity.Type)
+			return activity
+		}
+
+		commute := isCommute(activity, home, work, distance, margin)
+		activity.Hidden = commute
+		activity.Commute = commute
+		fmt.Printf("Activity commute: %t\n", commute)
+		return activity
+	}
 }
 
-func isCommute(activity Activity) bool {
-	if activity.Type != TypeRide {
-		fmt.Println("Activity not a ride, public", activity.Type)
-		return false
-	}
-
-	if activity.Distance > 15 {
+func isCommute(activity Activity, home, work [2]float64, distance, margin float64) bool {
+	if activity.Distance > distance {
 		fmt.Println("Activity too far to be a commute", activity.Distance)
 		return false
 	}
 
-	if (isNear(activity.StartLoc, home) && isNear(activity.EndLoc, work)) ||
-		(isNear(activity.StartLoc, work) && isNear(activity.EndLoc, home)) {
+	if (isNear(activity.StartLoc, home, margin) && isNear(activity.EndLoc, work, margin)) ||
+		(isNear(activity.StartLoc, work, margin) && isNear(activity.EndLoc, home, margin)) {
 		fmt.Println("Activity is near home and work, private")
 		return true
 	}
@@ -52,29 +53,12 @@ func isCommute(activity Activity) bool {
 	return false
 }
 
-func isNear(a, b [2]float64) bool {
+func isNear(a, b [2]float64, margin float64) bool {
 	fmt.Println(a, b)
-
 	fmt.Println(a[0] - b[0])
 	fmt.Println(a[1] - b[1])
-
 	return (a[0] >= b[0]-margin && a[0] <= b[0]+margin) && (a[1] >= b[1]-margin && a[1] <= b[1]+margin)
 }
-
-func envFloat(key string) float64 {
-	v, err := strconv.ParseFloat(os.Getenv(key), 64)
-	if err != nil {
-		panic(fmt.Sprintf("invalid or missing env var %s: %v", key, err))
-	}
-	return v
-}
-
-var (
-	home = [2]float64{envFloat("HOME_LAT"), envFloat("HOME_LNG")}
-	work = [2]float64{envFloat("WORK_LAT"), envFloat("WORK_LNG")}
-)
-
-var margin = 0.005
 
 func must[T any](v T, err error) T {
 	if err != nil {
