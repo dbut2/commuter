@@ -1,3 +1,5 @@
+go_module: github.com/dbut2/commuter/go
+
 users:
   57192790:
     - type: commute

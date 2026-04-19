@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"math"
 	"slices"
 	"time"
 )
@@ -38,26 +39,27 @@ func Commute(home, work [2]float64, distance, margin float64, types ...Type) Upd
 	}
 }
 
-func isCommute(activity Activity, home, work [2]float64, distance, margin float64) bool {
-	if activity.Distance > distance {
-		fmt.Println("Activity too far to be a commute", activity.Distance)
+func isCommute(activity Activity, home, work [2]float64, maxDistance, margin float64) bool {
+	if activity.Distance > maxDistance {
 		return false
 	}
 
-	if (isNear(activity.StartLoc, home, margin) && isNear(activity.EndLoc, work, margin)) ||
-		(isNear(activity.StartLoc, work, margin) && isNear(activity.EndLoc, home, margin)) {
-		fmt.Println("Activity is near home and work, private")
-		return true
+	isNear := func(a, b [2]float64) bool {
+		return distance(a, b) < margin
 	}
 
-	return false
+	start, end := activity.StartLoc, activity.EndLoc
+
+	workTrip := isNear(home, start) && isNear(work, end)
+	homeTrip := isNear(work, start) && isNear(home, end)
+
+	return workTrip || homeTrip
 }
 
-func isNear(a, b [2]float64, margin float64) bool {
-	fmt.Println(a, b)
-	fmt.Println(a[0] - b[0])
-	fmt.Println(a[1] - b[1])
-	return (a[0] >= b[0]-margin && a[0] <= b[0]+margin) && (a[1] >= b[1]-margin && a[1] <= b[1]+margin)
+func distance(a, b [2]float64) float64 {
+	x := math.Abs(a[0] - b[0])
+	y := math.Abs(a[1] - b[1])
+	return math.Sqrt(x*x + y*y)
 }
 
 func must[T any](v T, err error) T {

@@ -8,7 +8,7 @@ import (
 
 	"github.com/antihax/optional"
 
-	"dbut.dev/commuter/src/strava"
+	"commuter.dbut.dev/strava"
 )
 
 type StravaClient interface {

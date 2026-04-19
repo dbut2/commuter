@@ -1,8 +1,9 @@
-module dbut.dev/commuter
+module commuter.dbut.dev
 
 go 1.26.0
 
 require (
+	dbut.dev/x v0.0.0-20260419024511-4b2bcc3e9104
 	github.com/antihax/optional v1.0.0
 	github.com/gin-gonic/gin v1.12.0
 	github.com/redis/go-redis/v9 v9.18.0

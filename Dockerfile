@@ -1,19 +1,19 @@
 FROM golang:1.26-alpine AS builder
 
-WORKDIR commuter
+WORKDIR /commuter
 
-COPY go.mod go.mod
-COPY go.sum go.sum
+COPY go/go.mod go/go.sum ./
 
 RUN go mod download
 
-COPY src src
+COPY go/ ./
 
-RUN go build -o /app ./src
+RUN go build -o /app .
 
 FROM alpine AS final
 
 COPY --from=builder /app /app
+COPY config.yaml /config.yaml
 
 ENV PORT=8080
 EXPOSE ${PORT}

@@ -2,16 +2,15 @@ package main
 
 import (
 	"bytes"
-	_ "embed"
 	"fmt"
+	"os"
 	"text/template"
 	"time"
 
 	"gopkg.in/yaml.v3"
 )
 
-//go:embed config.yaml
-var configFile []byte
+const configPath = "/config.yaml"
 
 type updaterConfig struct {
 	Type        string     `yaml:"type"`
@@ -28,7 +27,8 @@ type updaterConfig struct {
 }
 
 type rawConfig struct {
-	Users map[int64][]updaterConfig `yaml:"users"`
+	GoModule string                    `yaml:"go_module"`
+	Users    map[int64][]updaterConfig `yaml:"users"`
 }
 
 type challengeData struct {
@@ -38,11 +38,16 @@ type challengeData struct {
 }
 
 type Config struct {
-	users map[int64][]Updater
+	goModule string
+	users    map[int64][]Updater
 }
 
 func loadConfig() Config {
-	return parseConfig(configFile)
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		panic(fmt.Sprintf("failed to read %s: %v", configPath, err))
+	}
+	return parseConfig(data)
 }
 
 func parseConfig(data []byte) Config {
@@ -95,7 +100,7 @@ func parseConfig(data []byte) Config {
 		users[userID] = updaters
 	}
 
-	return Config{users: users}
+	return Config{goModule: raw.GoModule, users: users}
 }
 
 func (c Config) UpdatersForUser(userID int64) ([]Updater, bool) {

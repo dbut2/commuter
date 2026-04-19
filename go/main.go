@@ -9,12 +9,13 @@ import (
 	"time"
 	_ "time/tzdata"
 
+	"dbut.dev/x/vanity"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/endpoints"
 
-	"dbut.dev/commuter/src/strava"
+	"commuter.dbut.dev/strava"
 )
 
 func main() {
@@ -36,7 +37,13 @@ func main() {
 
 	cfg := loadConfig()
 
+	fmt.Println(cfg)
+
 	e := gin.Default()
+
+	if cfg.goModule != "" {
+		e.Use(vanity.Middleware(cfg.goModule))
+	}
 
 	e.GET("/", func(c *gin.Context) {
 

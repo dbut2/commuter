@@ -1,3 +1,9 @@
+dbut.dev/x v0.0.0-20260418080232-e78186aa4748 h1:o/GDWDkMbdJOU8afbFXzroMylL+v/yundJeexReWewE=
+dbut.dev/x v0.0.0-20260418080232-e78186aa4748/go.mod h1:V0Q8XKYQGrMQwKuKpY+poFAdHgIagMN0xywKPu43idM=
+dbut.dev/x v0.0.0-20260419023755-4f7fd933797b h1:S2GlEtFd2B8MWhrLZMwJARi0GFRx0PhQWIiyWszuyho=
+dbut.dev/x v0.0.0-20260419023755-4f7fd933797b/go.mod h1:V0Q8XKYQGrMQwKuKpY+poFAdHgIagMN0xywKPu43idM=
+dbut.dev/x v0.0.0-20260419024511-4b2bcc3e9104 h1:T0tDJ3UbZ57S+PpJzU+sbj39NL4SKBxu2a0NdjPFStE=
+dbut.dev/x v0.0.0-20260419024511-4b2bcc3e9104/go.mod h1:V0Q8XKYQGrMQwKuKpY+poFAdHgIagMN0xywKPu43idM=
 github.com/antihax/optional v1.0.0 h1:xK2lYat7ZLaVVcIuj82J8kIro4V6kDe0AUDFboUCwcg=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
 github.com/bsm/ginkgo/v2 v2.12.0 h1:Ny8MWAHyOepLGlLKYmXG4IEkioBysk6GpaRTLC8zwWs=
