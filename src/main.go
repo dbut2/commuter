@@ -79,6 +79,8 @@ func main() {
 	e.GET("/strava/webhook", webhook(rClient, oauth2Config, client, cfg))
 	e.POST("/strava/webhook", webhook(rClient, oauth2Config, client, cfg))
 
+	go runWorker(context.Background(), rClient, oauth2Config, client, cfg)
+
 	fmt.Println("Starting server")
 
 	port := os.Getenv("HTTP_PORT")
@@ -117,8 +119,9 @@ func webhook(rClient *redisClient, config oauth2.Config, client StravaClient, cf
 			return
 		}
 
-		updaters, ok := cfg.UpdatersForUser(wh.OwnerID)
-		if !ok {
+		updaters, _ := cfg.UpdatersForUser(wh.OwnerID)
+		pendingUpdaters, _ := cfg.PendingUpdatersForUser(wh.OwnerID)
+		if len(updaters) == 0 && len(pendingUpdaters) == 0 {
 			fmt.Printf("WARNING: no config for user %d\n", wh.OwnerID)
 			return
 		}
@@ -148,6 +151,14 @@ func webhook(rClient *redisClient, config oauth2.Config, client StravaClient, cf
 
 		if updated {
 			client.UpdateActivity(ctx, activity)
+		}
+
+		for _, p := range pendingUpdaters {
+			if pending, ok := p.Check(ctx, client, activity); ok {
+				if err := rClient.Enqueue(ctx, pending); err != nil {
+					fmt.Println(err.Error())
+				}
+			}
 		}
 	}
 }
