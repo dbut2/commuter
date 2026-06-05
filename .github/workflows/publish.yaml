@@ -43,7 +43,3 @@ jobs:
           tags: |
             ghcr.io/dbut2/commuter:latest
             ghcr.io/dbut2/commuter:sha-${{ github.sha }}
-
-      - name: Trigger Watchtower update
-        run: |
-          curl -fsS -o /dev/null -w "HTTP %{http_code}\n" -H "Authorization: Bearer ${{ secrets.WATCHTOWER_TOKEN }}" https://watchtower-commuter.dbut.dev/v1/update
