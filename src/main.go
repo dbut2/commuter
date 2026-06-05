@@ -10,12 +10,21 @@ import (
 	_ "time/tzdata"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-openapi/strfmt"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/endpoints"
 
-	"dbut.dev/commuter/src/strava"
+	"dbut.dev/commuter/src/strava/client"
+	"dbut.dev/commuter/src/strava/client/athletes"
 )
+
+// ctxKey is the type used for context values set by this package.
+type ctxKey string
+
+// accessTokenKey carries the Strava OAuth access token through the request
+// context so per-call authenticators can read it.
+const accessTokenKey ctxKey = "strava-access-token"
 
 func main() {
 	baseUrl := "https://commuter.dbut.dev"
@@ -28,9 +37,8 @@ func main() {
 		Scopes:       []string{"activity:read,activity:read_all,activity:write"},
 	}
 
-	clientConfig := strava.NewConfiguration()
-	sClient := strava.NewAPIClient(clientConfig)
-	client := StravaClient((*stravaClient)(sClient))
+	sClient := &stravaClient{api: client.NewHTTPClient(strfmt.Default)}
+	stravaAPI := StravaClient(sClient)
 
 	rClient := &redisClient{client: redis.NewClient(&redis.Options{Addr: "redis:6379"})}
 
@@ -57,7 +65,7 @@ func main() {
 
 		ctx := authContext(c, token)
 
-		athlete, _, err := sClient.AthletesApi.GetLoggedInAthlete(ctx)
+		athleteResp, err := sClient.api.Athletes.GetLoggedInAthlete(athletes.NewGetLoggedInAthleteParams().WithContext(ctx), authInfo(ctx))
 		if err != nil {
 			_ = c.Error(err)
 			c.Status(http.StatusInternalServerError)
@@ -66,7 +74,7 @@ func main() {
 
 		c.SetCookie("token", token.AccessToken, int(time.Until(token.Expiry).Seconds()), "/", "commuter.dbut.dev", true, true)
 
-		err = rClient.StoreToken(ctx, athlete.Id, token)
+		err = rClient.StoreToken(ctx, athleteResp.Payload.ID, token)
 		if err != nil {
 			_ = c.Error(err)
 			c.Status(http.StatusInternalServerError)
@@ -76,8 +84,8 @@ func main() {
 		c.Redirect(http.StatusFound, baseUrl)
 	})
 
-	e.GET("/strava/webhook", webhook(rClient, oauth2Config, client, cfg))
-	e.POST("/strava/webhook", webhook(rClient, oauth2Config, client, cfg))
+	e.GET("/strava/webhook", webhook(rClient, oauth2Config, stravaAPI, cfg))
+	e.POST("/strava/webhook", webhook(rClient, oauth2Config, stravaAPI, cfg))
 
 	fmt.Println("Starting server")
 
@@ -171,5 +179,5 @@ func validate(c *gin.Context) bool {
 }
 
 func authContext(ctx context.Context, token *oauth2.Token) context.Context {
-	return context.WithValue(ctx, strava.ContextAccessToken, token.AccessToken)
+	return context.WithValue(ctx, accessTokenKey, token.AccessToken)
 }

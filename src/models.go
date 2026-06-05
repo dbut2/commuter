@@ -6,9 +6,12 @@ import (
 	"slices"
 	"time"
 
-	"github.com/antihax/optional"
+	"github.com/go-openapi/runtime"
+	httptransport "github.com/go-openapi/runtime/client"
 
-	"dbut.dev/commuter/src/strava"
+	"dbut.dev/commuter/src/strava/client"
+	"dbut.dev/commuter/src/strava/client/activities"
+	"dbut.dev/commuter/src/strava/models"
 )
 
 type StravaClient interface {
@@ -57,80 +60,66 @@ type Activity struct {
 	StartLoc, EndLoc [2]float64
 }
 
-type Type strava.SportType
+type Type models.SportType
 
 const (
 	TypeUnknown = Type("")
-	TypeRun     = Type(strava.RUN_SportType)
-	TypeWalk    = Type(strava.WALK_SportType)
-	TypeRide    = Type(strava.RIDE_SportType)
+	TypeRun     = Type(models.SportTypeRun)
+	TypeWalk    = Type(models.SportTypeWalk)
+	TypeRide    = Type(models.SportTypeRide)
 )
 
-func s1(s *strava.SportType) Type {
-	if s == nil {
-		return TypeUnknown
-	}
-	return Type(*s)
+func s1(s models.SportType) Type {
+	return Type(s)
 }
 
-func s2(s Type) *strava.SportType {
-	if s == TypeUnknown {
-		return nil
-	}
-	return (*strava.SportType)(&s)
+func s2(s Type) models.SportType {
+	return models.SportType(s)
 }
 
-func ActivityFromStrava(activity strava.DetailedActivity) Activity {
-	var startLoc, endLoc [2]float64
-	if activity.StartLatlng != nil {
-		startLoc = *activity.StartLatlng
+func latLng(l models.LatLng) [2]float64 {
+	var loc [2]float64
+	for i := 0; i < len(loc) && i < len(l); i++ {
+		loc[i] = float64(l[i])
 	}
-	if activity.EndLatlng != nil {
-		endLoc = *activity.EndLatlng
-	}
+	return loc
+}
 
+func ActivityFromStrava(activity models.DetailedActivity) Activity {
 	return Activity{
-		ID:              int(activity.Id),
+		ID:              int(activity.ID),
 		Name:            activity.Name,
 		Description:     activity.Description,
 		Type:            s1(activity.SportType),
 		Commute:         activity.Commute,
 		Hidden:          activity.HideFromHome,
-		Time:            activity.StartDate,
+		Time:            time.Time(activity.StartDate),
 		Distance:        float64(activity.Distance) / 1000,
 		MovingDuration:  time.Second * time.Duration(activity.MovingTime),
 		ElapsedDuration: time.Second * time.Duration(activity.ElapsedTime),
-		StartLoc:        startLoc,
-		EndLoc:          endLoc,
+		StartLoc:        latLng(activity.StartLatlng),
+		EndLoc:          latLng(activity.EndLatlng),
 	}
 }
 
-func ActivityFromSummary(activity strava.SummaryActivity) Activity {
-	var startLoc, endLoc [2]float64
-	if activity.StartLatlng != nil {
-		startLoc = *activity.StartLatlng
-	}
-	if activity.EndLatlng != nil {
-		endLoc = *activity.EndLatlng
-	}
-
+func ActivityFromSummary(activity models.SummaryActivity) Activity {
 	return Activity{
-		ID:              int(activity.Id),
+		ID:              int(activity.ID),
 		Name:            activity.Name,
 		Type:            s1(activity.SportType),
 		Commute:         activity.Commute,
 		Hidden:          activity.HideFromHome,
-		Time:            activity.StartDate,
+		Time:            time.Time(activity.StartDate),
 		Distance:        float64(activity.Distance) / 1000,
 		MovingDuration:  time.Second * time.Duration(activity.MovingTime),
 		ElapsedDuration: time.Second * time.Duration(activity.ElapsedTime),
-		StartLoc:        startLoc,
-		EndLoc:          endLoc,
+		StartLoc:        latLng(activity.StartLatlng),
+		EndLoc:          latLng(activity.EndLatlng),
 	}
 }
 
-func (a Activity) ToUpdatable() strava.UpdatableActivity {
-	return strava.UpdatableActivity{
+func (a Activity) ToUpdatable() models.UpdatableActivity {
+	return models.UpdatableActivity{
 		Commute:      a.Commute,
 		HideFromHome: a.Hidden,
 		Description:  a.Description,
@@ -139,53 +128,60 @@ func (a Activity) ToUpdatable() strava.UpdatableActivity {
 	}
 }
 
-type stravaClient strava.APIClient
+type stravaClient struct {
+	api *client.StravaAPIV3
+}
 
 var _ StravaClient = new(stravaClient)
 
 func (s *stravaClient) GetActivity(ctx context.Context, id int) Activity {
-	resp, _, err := s.ActivitiesApi.GetActivityById(ctx, int64(id), nil)
+	params := activities.NewGetActivityByIDParams().WithContext(ctx).WithID(int64(id))
+	resp, err := s.api.Activities.GetActivityByID(params, authInfo(ctx))
 	if err != nil {
 		panic(err.Error())
 	}
 
-	return ActivityFromStrava(resp)
+	return ActivityFromStrava(*resp.Payload)
 }
 
 func (s *stravaClient) ListActivities(ctx context.Context, filter ActivityFilter) []Activity {
-	after := optional.Int32{}
+	params := activities.NewGetLoggedInAthleteActivitiesParams().WithContext(ctx)
 	if !filter.After.IsZero() {
-		after = optional.NewInt32(int32(filter.After.Unix()))
+		after := filter.After.Unix()
+		params.SetAfter(&after)
 	}
-
-	before := optional.Int32{}
 	if !filter.Before.IsZero() {
-		before = optional.NewInt32(int32(filter.Before.Unix()))
+		before := filter.Before.Unix()
+		params.SetBefore(&before)
 	}
 
-	resp, _, err := s.ActivitiesApi.GetLoggedInAthleteActivities(ctx, &strava.ActivitiesApiGetLoggedInAthleteActivitiesOpts{
-		Before: before,
-		After:  after,
-	})
+	resp, err := s.api.Activities.GetLoggedInAthleteActivities(params, authInfo(ctx))
 	if err != nil {
 		panic(err.Error())
 	}
 
-	var activities []Activity
-	for _, r := range resp {
-		activity := ActivityFromSummary(r)
+	var activitiesList []Activity
+	for _, r := range resp.Payload {
+		activity := ActivityFromSummary(*r)
 		if filter.Valid(activity) {
-			activities = append(activities, ActivityFromSummary(r))
+			activitiesList = append(activitiesList, activity)
 		}
 	}
-	return activities
+	return activitiesList
 }
 
 func (s *stravaClient) UpdateActivity(ctx context.Context, activity Activity) {
-	_, _, err := s.ActivitiesApi.UpdateActivityById(ctx, int64(activity.ID), &strava.ActivitiesApiUpdateActivityByIdOpts{
-		Body: optional.NewInterface(activity.ToUpdatable()),
-	})
+	body := activity.ToUpdatable()
+	params := activities.NewUpdateActivityByIDParams().WithContext(ctx).WithID(int64(activity.ID)).WithBody(&body)
+	_, err := s.api.Activities.UpdateActivityByID(params, authInfo(ctx))
 	if err != nil {
 		panic(err.Error())
 	}
+}
+
+// authInfo builds a per-request bearer-token authenticator from the access
+// token stored on the context by authContext.
+func authInfo(ctx context.Context) runtime.ClientAuthInfoWriter {
+	token, _ := ctx.Value(accessTokenKey).(string)
+	return httptransport.BearerToken(token)
 }
