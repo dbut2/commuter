@@ -1,0 +1,40 @@
+name: Go Generate
+
+on:
+  schedule:
+    - cron: '0 17 * * 0' # 3/4am Australia/Melbourne
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - id: generate-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: dbut2
+
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ steps.generate-token.outputs.token }}
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - run: go generate ./...
+
+      - run: go mod tidy
+
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ steps.generate-token.outputs.token }}
+          branch: tech/generate
+          delete-branch: true
+          commit-message: "tech: generate"
+          title: "tech: generate"
