@@ -67,17 +67,6 @@ func must[T any](v T, err error) T {
 	return v
 }
 
-var locationCache = make(map[string]*time.Location)
-
-func location(loc string) *time.Location {
-	if v, ok := locationCache[loc]; ok {
-		return v
-	}
-	l := must(time.LoadLocation(loc))
-	locationCache[loc] = l
-	return l
-}
-
 func durationString(d time.Duration) string {
 	hours := int(d.Hours())
 	d -= time.Duration(hours) * time.Hour
@@ -88,9 +77,9 @@ func durationString(d time.Duration) string {
 	return fmt.Sprintf("%d:%02d:%02d", hours, minutes, seconds)
 }
 
-func Challenge(formatter func(day int, distance float64, duration time.Duration) string, start, end, loc string, types ...Type) Updater {
-	startTime := must(time.ParseInLocation("02/01/2006", start, location(loc)))
-	endTime := must(time.ParseInLocation("02/01/2006", end, location(loc))).AddDate(0, 0, 1).Add(-time.Nanosecond)
+func Challenge(formatter func(day int, distance float64, duration time.Duration) string, start, end string, types ...Type) Updater {
+	startTime := must(time.Parse("02/01/2006", start))
+	endTime := must(time.Parse("02/01/2006", end)).AddDate(0, 0, 1).Add(-time.Nanosecond)
 	filter := ActivityFilter{
 		After:  startTime,
 		Before: endTime,
