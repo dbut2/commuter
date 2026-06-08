@@ -69,13 +69,13 @@ func (u parkrunUpdater) Resolve(ctx context.Context, client StravaClient, data [
 		return nil, false
 	}
 
-	name, found, err := parkrun.Lookup(ctx, parkrun.DefaultBaseURL, payload.ParkrunnerID, payload.EventDate)
+	result, found, err := parkrun.Lookup(ctx, parkrun.DefaultBaseURL, payload.ParkrunnerID, payload.EventDate)
 	if err != nil || !found {
 		return nil, false
 	}
 
 	return func(_ context.Context, _ StravaClient, activity Activity) Activity {
-		activity.Name = name
+		activity.Name = result.Event
 		return activity
 	}, true
 }

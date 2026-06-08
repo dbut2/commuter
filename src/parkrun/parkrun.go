@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,35 +17,44 @@ const DefaultBaseURL = "https://www.parkrun.com.au"
 
 var httpClient = &http.Client{Timeout: 20 * time.Second}
 
-func Lookup(ctx context.Context, baseURL string, athleteID int64, date string) (string, bool, error) {
+type Data struct {
+	Event      string
+	RunNumber  int
+	OverallPos int
+	Time       time.Duration
+	AgeGrade   float64
+	PB         bool
+}
+
+func Lookup(ctx context.Context, baseURL string, athleteID int64, date string) (Data, bool, error) {
 	url := fmt.Sprintf("%s/parkrunner/%d/all/", strings.TrimRight(baseURL, "/"), athleteID)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return "", false, err
+		return Data{}, false, err
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36")
 	req.Header.Set("Accept", "text/html,application/xhtml+xml")
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return "", false, err
+		return Data{}, false, err
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", false, fmt.Errorf("parkrun returned status %d", resp.StatusCode)
+		return Data{}, false, fmt.Errorf("parkrun returned status %d", resp.StatusCode)
 	}
 
 	return parse(resp.Body, date)
 }
 
-func parse(body io.Reader, date string) (string, bool, error) {
+func parse(body io.Reader, date string) (Data, bool, error) {
 	doc, err := html.Parse(body)
 	if err != nil {
-		return "", false, err
+		return Data{}, false, err
 	}
 
-	var result string
+	var result Data
 	var found bool
 
 	var walk func(*html.Node)
@@ -65,16 +76,28 @@ func parse(body io.Reader, date string) (string, bool, error) {
 					}
 				}
 			}
-			for _, cell := range cells {
-				if cell == date {
-					if event == "" && len(cells) > 0 {
-						event = cells[0]
-					}
-					result = normalize(event)
-					found = true
-					return
-				}
+
+			if len(cells) < 6 || cells[1] != date {
+				return
 			}
+
+			runNumber, _ := strconv.Atoi(cells[2])
+			overallPos, _ := strconv.Atoi(cells[3])
+
+			duration, _ := parseTime(cells[4])
+			ageGrade := 0.0
+			_, _ = fmt.Sscanf(cells[5], "%f%%", &ageGrade)
+
+			result = Data{
+				Event:      normalize(cells[0]),
+				RunNumber:  runNumber,
+				OverallPos: overallPos,
+				Time:       duration,
+				AgeGrade:   ageGrade,
+				PB:         cells[6] != "",
+			}
+			found = true
+			return
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
 			walk(c)
@@ -117,4 +140,36 @@ func firstAnchorText(n *html.Node) string {
 		}
 	}
 	return ""
+}
+
+var timeRegexp = regexp.MustCompile(`^(\d+:)?(\d{2}):(\d{2})$`)
+
+func parseTime(s string) (time.Duration, error) {
+	m := timeRegexp.FindStringSubmatch(strings.TrimSpace(s))
+	if m == nil {
+		return 0, fmt.Errorf("invalid time format: %q", s)
+	}
+
+	var hours int
+	if m[1] != "" {
+		var err error
+		hours, err = strconv.Atoi(strings.TrimSuffix(m[1], ":"))
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	minutes, err := strconv.Atoi(m[2])
+	if err != nil {
+		return 0, err
+	}
+
+	seconds, err := strconv.Atoi(m[3])
+	if err != nil {
+		return 0, err
+	}
+
+	return time.Duration(hours)*time.Hour +
+		time.Duration(minutes)*time.Minute +
+		time.Duration(seconds)*time.Second, nil
 }
