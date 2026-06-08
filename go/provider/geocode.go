@@ -172,7 +172,7 @@ func geocodeFetch(ctx context.Context, lat, lon float64, zoom int) (json.RawMess
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
