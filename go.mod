@@ -5,7 +5,9 @@ go 1.26.0
 require (
 	github.com/antihax/optional v1.0.0
 	github.com/gin-gonic/gin v1.12.0
+	github.com/google/uuid v1.6.0
 	github.com/redis/go-redis/v9 v9.20.0
+	github.com/sqlc-dev/pqtype v0.3.0
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/net v0.55.0
 	golang.org/x/oauth2 v0.36.0
