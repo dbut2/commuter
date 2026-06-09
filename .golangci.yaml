@@ -2,4 +2,4 @@ version: "2"
 linters:
   exclusions:
     paths:
-      - src/strava
+      - go/client/strava

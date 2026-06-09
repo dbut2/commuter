@@ -1,18 +1,16 @@
 package strava
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"fmt"
-	"io"
 	"net/http"
 	"time"
 
-	"dbut.dev/commuter/go/core"
-)
+	"github.com/antihax/optional"
 
-const stravaAPIBase = "https://www.strava.com/api/v3"
+	"dbut.dev/commuter/go/core"
+
+	api "dbut.dev/commuter/go/client/strava"
+)
 
 type StravaAPI interface {
 	GetActivity(ctx context.Context, id int64) (core.Activity, error)
@@ -21,10 +19,10 @@ type StravaAPI interface {
 }
 
 type ActivityUpdate struct {
-	Name         *string `json:"name,omitempty"`
-	Description  *string `json:"description,omitempty"`
-	Commute      *bool   `json:"commute,omitempty"`
-	HideFromHome *bool   `json:"hide_from_home,omitempty"`
+	Name         *string
+	Description  *string
+	Commute      *bool
+	HideFromHome *bool
 }
 
 func (u ActivityUpdate) Empty() bool {
@@ -32,70 +30,33 @@ func (u ActivityUpdate) Empty() bool {
 }
 
 type stravaClient struct {
-	http *http.Client
+	api *api.APIClient
 }
 
-func NewClient(httpClient *http.Client) StravaAPI { return &stravaClient{http: httpClient} }
-
-type stravaActivity struct {
-	ID             int64     `json:"id"`
-	Name           string    `json:"name"`
-	Description    string    `json:"description"`
-	SportType      string    `json:"sport_type"`
-	Type           string    `json:"type"`
-	Commute        bool      `json:"commute"`
-	HideFromHome   bool      `json:"hide_from_home"`
-	StartDateLocal time.Time `json:"start_date_local"`
-	Distance       float64   `json:"distance"`
-	MovingTime     int       `json:"moving_time"`
-	ElapsedTime    int       `json:"elapsed_time"`
-	StartLatLng    []float64 `json:"start_latlng"`
-	EndLatLng      []float64 `json:"end_latlng"`
-}
-
-func (a stravaActivity) toCore() core.Activity {
-	loc := func(p []float64) [2]float64 {
-		if len(p) >= 2 {
-			return [2]float64{p[0], p[1]}
-		}
-		return [2]float64{}
-	}
-	typ := a.SportType
-	if typ == "" {
-		typ = a.Type
-	}
-	return core.Activity{
-		ID:              int(a.ID),
-		Name:            a.Name,
-		Description:     a.Description,
-		Type:            typ,
-		Commute:         a.Commute,
-		Hidden:          a.HideFromHome,
-		Time:            a.StartDateLocal,
-		Distance:        a.Distance,
-		MovingDuration:  time.Duration(a.MovingTime) * time.Second,
-		ElapsedDuration: time.Duration(a.ElapsedTime) * time.Second,
-		StartLoc:        loc(a.StartLatLng),
-		EndLoc:          loc(a.EndLatLng),
-	}
+func NewClient(httpClient *http.Client) StravaAPI {
+	cfg := api.NewConfiguration()
+	cfg.HTTPClient = httpClient
+	return &stravaClient{api: api.NewAPIClient(cfg)}
 }
 
 func (c *stravaClient) GetActivity(ctx context.Context, id int64) (core.Activity, error) {
-	var sa stravaActivity
-	if err := c.do(ctx, http.MethodGet, fmt.Sprintf("/activities/%d", id), nil, &sa); err != nil {
+	a, _, err := c.api.ActivitiesApi.GetActivityById(ctx, id, nil)
+	if err != nil {
 		return core.Activity{}, err
 	}
-	return sa.toCore(), nil
+	return toCore(a), nil
 }
 
 func (c *stravaClient) ListActivities(ctx context.Context, perPage int) ([]int64, error) {
-	var list []stravaActivity
-	if err := c.do(ctx, http.MethodGet, fmt.Sprintf("/athlete/activities?per_page=%d", perPage), nil, &list); err != nil {
+	acts, _, err := c.api.ActivitiesApi.GetLoggedInAthleteActivities(ctx, &api.ActivitiesApiGetLoggedInAthleteActivitiesOpts{
+		PerPage: optional.NewInt32(int32(perPage)),
+	})
+	if err != nil {
 		return nil, err
 	}
-	ids := make([]int64, len(list))
-	for i, a := range list {
-		ids[i] = a.ID
+	ids := make([]int64, len(acts))
+	for i, a := range acts {
+		ids[i] = a.Id
 	}
 	return ids, nil
 }
@@ -104,36 +65,50 @@ func (c *stravaClient) UpdateActivity(ctx context.Context, id int64, upd Activit
 	if upd.Empty() {
 		return nil
 	}
-	body, err := json.Marshal(upd)
-	if err != nil {
-		return err
+	var body api.UpdatableActivity
+	if upd.Name != nil {
+		body.Name = *upd.Name
 	}
-	return c.do(ctx, http.MethodPut, fmt.Sprintf("/activities/%d", id), body, nil)
+	if upd.Description != nil {
+		body.Description = *upd.Description
+	}
+	if upd.Commute != nil {
+		body.Commute = *upd.Commute
+	}
+	if upd.HideFromHome != nil {
+		body.HideFromHome = *upd.HideFromHome
+	}
+	_, _, err := c.api.ActivitiesApi.UpdateActivityById(ctx, id, &api.ActivitiesApiUpdateActivityByIdOpts{
+		Body: optional.NewInterface(body),
+	})
+	return err
 }
 
-func (c *stravaClient) do(ctx context.Context, method, path string, body []byte, out any) error {
-	var rdr io.Reader
-	if body != nil {
-		rdr = bytes.NewReader(body)
+func toCore(a api.DetailedActivity) core.Activity {
+	loc := func(p *[2]float64) [2]float64 {
+		if p != nil {
+			return *p
+		}
+		return [2]float64{}
 	}
-	req, err := http.NewRequestWithContext(ctx, method, stravaAPIBase+path, rdr)
-	if err != nil {
-		return err
+	typ := ""
+	if a.SportType != nil {
+		typ = string(*a.SportType)
+	} else if a.Type_ != nil {
+		typ = string(*a.Type_)
 	}
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
+	return core.Activity{
+		ID:              int(a.Id),
+		Name:            a.Name,
+		Description:     a.Description,
+		Type:            typ,
+		Commute:         a.Commute,
+		Hidden:          a.HideFromHome,
+		Time:            a.StartDateLocal,
+		Distance:        float64(a.Distance),
+		MovingDuration:  time.Duration(a.MovingTime) * time.Second,
+		ElapsedDuration: time.Duration(a.ElapsedTime) * time.Second,
+		StartLoc:        loc(a.StartLatlng),
+		EndLoc:          loc(a.EndLatlng),
 	}
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = resp.Body.Close() }()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		b, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		return fmt.Errorf("strava %s %s: %d: %s", method, path, resp.StatusCode, b)
-	}
-	if out != nil {
-		return json.NewDecoder(resp.Body).Decode(out)
-	}
-	return nil
 }

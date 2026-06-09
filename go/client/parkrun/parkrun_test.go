@@ -22,7 +22,7 @@ func TestLookup(t *testing.T) {
 		Event:      "Toolern Creek parkrun",
 		RunNumber:  521,
 		OverallPos: 60,
-		Time:       38 * time.Minute + 40 * time.Second,
+		Time:       38*time.Minute + 40*time.Second,
 		AgeGrade:   33.36,
 	}, result)
 }

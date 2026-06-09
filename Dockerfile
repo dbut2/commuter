@@ -1,20 +1,22 @@
 FROM golang:1.26-alpine AS builder
 
-WORKDIR commuter
+WORKDIR /app
 
-COPY go.mod go.mod
-COPY go.sum go.sum
-
+COPY go.mod go.sum ./
 RUN go mod download
 
-COPY src src
+COPY ./db ./db
+COPY ./go ./go
 
-RUN go build -o /app ./src
+RUN go build -o /bin/server ./go
 
 FROM alpine AS final
 
-COPY --from=builder /app /app
+WORKDIR /app
 
-ENV PORT=8080
+COPY --from=builder /bin/server /bin/server
+
+ARG PORT=8080
 EXPOSE ${PORT}
-CMD ["/app"]
+
+CMD ["/bin/server"]

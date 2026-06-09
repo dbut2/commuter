@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"dbut.dev/commuter/go/client/parkrun"
 	"dbut.dev/commuter/go/core"
-	"dbut.dev/commuter/src/parkrun"
 )
 
 var _ core.Provider = Parkrun{}
