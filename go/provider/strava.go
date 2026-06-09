@@ -5,8 +5,8 @@ import (
 	"math/big"
 	"time"
 
+	"dbut.dev/commuter/go/client/strava"
 	"dbut.dev/commuter/go/core"
-	"dbut.dev/commuter/src/strava"
 )
 
 var _ core.Provider = Strava{}
