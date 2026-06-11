@@ -1,0 +1,60 @@
+package web
+
+import "dbut.dev/x/kit"
+
+templ VarsPage(vars []VarRow, initials string) {
+	@kit.AppShell("Variables | commuter", nav("Variables", initials)) {
+		@kit.Page(kit.WidthNarrow) {
+			@kit.Title("Variables")
+			@kit.Muted() {
+				Named values you can use anywhere in a rule — as a condition value or as
+				@kit.Code("{vars.name}")
+				in templates. Coords variables power the
+				@kit.Code("is near")
+				operator.
+			}
+			@kit.Card() {
+				@kit.Table(kit.SM, []kit.Col{{Label: "Name"}, {Label: "Type"}, {Label: "Value"}, {Label: "Used"}, {}}) {
+					for _, v := range vars {
+						@kit.TR(kit.RowStyle{Hover: true}) {
+							@kit.TD(kit.CellOpts{Mono: true, XS: true, Strong: true}) {
+								{ v.Name }
+							}
+							@kit.TD(kit.CellOpts{}) {
+								@kit.Badge(v.Type, kit.BadgeOpts{Tone: kit.Ghost, Size: kit.SM, Mono: true})
+							}
+							@kit.TD(kit.CellOpts{Mono: true, XS: true, Faint: true, Break: true}) {
+								{ v.Value }
+							}
+							@kit.TD(kit.CellOpts{XS: true, Faint: true, NoWrap: true}) {
+								{ v.Used }
+							}
+							@kit.TD(kit.CellOpts{Right: true}) {
+								@kit.Button("Delete", kit.BtnOpts{Ghost: true, Size: kit.XS, Danger: true, Form: "var-del", Name: "name", Value: v.Name, Confirm: "Delete this variable?"})
+							}
+						}
+					}
+					@kit.TR(kit.RowStyle{Tint: true}) {
+						@kit.TD(kit.CellOpts{}) {
+							@kit.TextInput(kit.InputOpts{Form: "var-add", Name: "name", Size: kit.XS, W: "24", Mono: true, Placeholder: "name", Required: true, Pattern: "[a-zA-Z0-9_]+", Title: "letters, digits and underscores"})
+						}
+						@kit.TD(kit.CellOpts{}) {
+							@kit.Select(kit.SelectOpts{Form: "var-add", Name: "type", Size: kit.XS, Mono: true, Selected: "coords"}, typeOptions())
+						}
+						@kit.TD(kit.CellOpts{Colspan: 2}) {
+							@kit.TextInput(kit.InputOpts{Form: "var-add", Name: "value", Size: kit.XS, W: "full", Mono: true, Placeholder: "-37.68, 144.58", Required: true})
+						}
+						@kit.TD(kit.CellOpts{Right: true}) {
+							@kit.Button("Add", kit.BtnOpts{Tone: kit.Primary, Size: kit.XS, Form: "var-add"})
+						}
+					}
+				}
+			}
+			@kit.Hint() {
+				Adding a variable with an existing name replaces its value — that's how you edit one.
+			}
+			@kit.Form(kit.FormOpts{ID: "var-add", Action: "/vars"})
+			@kit.Form(kit.FormOpts{ID: "var-del", Action: "/vars/delete"})
+		}
+	}
+}

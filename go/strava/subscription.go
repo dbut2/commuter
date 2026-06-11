@@ -25,8 +25,32 @@ func (a *Auth) EnsureSubscription(ctx context.Context, callbackURL, verifyToken 
 		if s.CallbackURL == callbackURL {
 			return nil
 		}
+		if err := a.deleteSubscription(ctx, s.ID); err != nil {
+			return err
+		}
 	}
 	return a.createSubscription(ctx, callbackURL, verifyToken)
+}
+
+func (a *Auth) deleteSubscription(ctx context.Context, id int64) error {
+	q := url.Values{
+		"client_id":     {a.cfg.ClientID},
+		"client_secret": {a.cfg.ClientSecret},
+	}
+	u := fmt.Sprintf("%s/%d?%s", subscriptionsURL, id, q.Encode())
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, u, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("delete subscription %d: status %d", id, resp.StatusCode)
+	}
+	return nil
 }
 
 func (a *Auth) listSubscriptions(ctx context.Context) ([]subscription, error) {

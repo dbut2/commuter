@@ -151,7 +151,7 @@ func (p *pgRepo) UpdateRule(ctx context.Context, userID string, r *engine.Rule) 
 		return err
 	}
 	_, err = p.q.UpdateRule(ctx, database.UpdateRuleParams{
-		ID: rid, UserID: uid, Name: r.Name, Conditions: conds, Actions: acts,
+		ID: rid, UserID: uid, Name: r.Name, Conditions: conds, Actions: acts, Enabled: r.Enabled,
 	})
 	return err
 }
@@ -178,6 +178,89 @@ func (p *pgRepo) DeleteRule(ctx context.Context, userID, id string) error {
 		return err
 	}
 	return p.q.DeleteRule(ctx, database.DeleteRuleParams{ID: rid, UserID: uid})
+}
+
+func (p *pgRepo) MoveRule(ctx context.Context, userID, id string, up bool) error {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return err
+	}
+	rows, err := p.q.ListRules(ctx, uid)
+	if err != nil {
+		return err
+	}
+	idx := -1
+	for i, r := range rows {
+		if r.ID.String() == id {
+			idx = i
+		}
+	}
+	swap := idx - 1
+	if !up {
+		swap = idx + 1
+	}
+	if idx < 0 || swap < 0 || swap >= len(rows) {
+		return nil
+	}
+	rows[idx], rows[swap] = rows[swap], rows[idx]
+	for i, r := range rows {
+		if int(r.Priority) == i {
+			continue
+		}
+		err := p.q.SetRulePriority(ctx, database.SetRulePriorityParams{ID: r.ID, UserID: uid, Priority: int32(i)})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (p *pgRepo) RuleEnabled(ctx context.Context, userID, id string) (bool, error) {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return false, err
+	}
+	rid, err := uuid.Parse(id)
+	if err != nil {
+		return false, err
+	}
+	row, err := p.q.GetRule(ctx, database.GetRuleParams{ID: rid, UserID: uid})
+	if err != nil {
+		return false, err
+	}
+	return row.Enabled, nil
+}
+
+func (p *pgRepo) Vars(ctx context.Context, userID string) ([]Var, error) {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := p.q.ListVars(ctx, uid)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Var, len(rows))
+	for i, r := range rows {
+		out[i] = Var{Name: r.Name, Type: r.Type, Value: r.Value}
+	}
+	return out, nil
+}
+
+func (p *pgRepo) SetVar(ctx context.Context, userID string, v Var) error {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return err
+	}
+	return p.q.UpsertVar(ctx, database.UpsertVarParams{UserID: uid, Name: v.Name, Type: v.Type, Value: v.Value})
+}
+
+func (p *pgRepo) DeleteVar(ctx context.Context, userID, name string) error {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return err
+	}
+	return p.q.DeleteVar(ctx, database.DeleteVarParams{UserID: uid, Name: name})
 }
 
 func (p *pgRepo) ParkrunID(ctx context.Context, userID string) (string, error) {
@@ -211,7 +294,7 @@ func (p *pgRepo) GetStravaToken(ctx context.Context, userID string) ([]byte, err
 	return tok, err
 }
 
-func (p *pgRepo) UpsertActivity(ctx context.Context, userID string, stravaID int64, status string, appliedRules []string, activityTime time.Time) (string, error) {
+func (p *pgRepo) UpsertActivity(ctx context.Context, userID string, stravaID int64, status string, appliedRules []string, activityTime time.Time, runLog []RunEntry) (string, error) {
 	uid, err := uuid.Parse(userID)
 	if err != nil {
 		return "", err
@@ -223,13 +306,108 @@ func (p *pgRepo) UpsertActivity(ctx context.Context, userID string, stravaID int
 	if err != nil {
 		return "", err
 	}
+	if runLog == nil {
+		runLog = []RunEntry{}
+	}
+	logJSON, err := json.Marshal(runLog)
+	if err != nil {
+		return "", err
+	}
 	row, err := p.q.UpsertActivity(ctx, database.UpsertActivityParams{
-		UserID: uid, StravaID: stravaID, Status: status, AppliedRules: applied, ActivityTime: nullTime(activityTime),
+		UserID: uid, StravaID: stravaID, Status: status, AppliedRules: applied,
+		ActivityTime: nullTime(activityTime), RunLog: logJSON,
 	})
 	if err != nil {
 		return "", err
 	}
 	return row.ID.String(), nil
+}
+
+func (p *pgRepo) ActivityIDByStrava(ctx context.Context, userID string, stravaID int64) (string, error) {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return "", err
+	}
+	id, err := p.q.ActivityIDByStrava(ctx, database.ActivityIDByStravaParams{UserID: uid, StravaID: stravaID})
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return id.String(), nil
+}
+
+func (p *pgRepo) SetActivityTime(ctx context.Context, activityID string, t time.Time) error {
+	aid, err := uuid.Parse(activityID)
+	if err != nil {
+		return err
+	}
+	return p.q.SetActivityTime(ctx, database.SetActivityTimeParams{ID: aid, ActivityTime: nullTime(t)})
+}
+
+func (p *pgRepo) ExistingStravaIDs(ctx context.Context, userID string, stravaIDs []int64) (map[int64]bool, error) {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, err
+	}
+	ids, err := p.q.ExistingStravaIDs(ctx, database.ExistingStravaIDsParams{UserID: uid, StravaIds: stravaIDs})
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[int64]bool, len(ids))
+	for _, id := range ids {
+		out[id] = true
+	}
+	return out, nil
+}
+
+func (p *pgRepo) ActivityDetail(ctx context.Context, userID, activityID string) (*ActivityInfo, error) {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, err
+	}
+	aid, err := uuid.Parse(activityID)
+	if err != nil {
+		return nil, err
+	}
+	a, err := p.q.GetActivity(ctx, database.GetActivityParams{ID: aid, UserID: uid})
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	info := &ActivityInfo{
+		ActivityID: a.ID.String(),
+		StravaID:   a.StravaID,
+		Status:     a.Status,
+		UpdatedAt:  a.UpdatedAt,
+		Strava:     map[string]string{},
+	}
+	_ = json.Unmarshal(a.AppliedRules, &info.AppliedRules)
+	_ = json.Unmarshal(a.RunLog, &info.RunLog)
+
+	blobs, err := p.q.ListProviderData(ctx, aid)
+	if err != nil {
+		return nil, err
+	}
+	for _, b := range blobs {
+		pb := ProviderBlob{Provider: b.Provider, Found: b.Found, FetchedAt: b.FetchedAt, Data: map[string]string{}}
+		_ = json.Unmarshal(b.Data, &pb.Data)
+		if b.Provider == "strava" {
+			info.Strava = pb.Data
+		}
+		info.Providers = append(info.Providers, pb)
+	}
+
+	j, err := p.q.GetJob(ctx, aid)
+	if err == nil {
+		info.Job = &JobInfo{Status: j.Status, NextRun: j.NextRun, ExpiresAt: j.ExpiresAt, LastError: j.LastError.String}
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
+	}
+	return info, nil
 }
 
 func (p *pgRepo) SetProviderData(ctx context.Context, activityID, provider string, data []byte, found bool) error {
@@ -312,6 +490,7 @@ func (p *pgRepo) Feed(ctx context.Context, userID string) ([]FeedItem, error) {
 				Status:    r.JobStatus.String,
 				NextRun:   r.JobNextRun.Time,
 				ExpiresAt: r.JobExpiresAt.Time,
+				LastError: r.JobLastError.String,
 			}
 		}
 		out = append(out, item)

@@ -1,0 +1,53 @@
+package web
+
+import "dbut.dev/x/kit"
+
+templ RulesPage(rules []RuleRow, initials string) {
+	@kit.AppShell("Rules | commuter", nav("Rules", initials)) {
+		@kit.Page(kit.WidthWide) {
+			@kit.PageHeader("Rules") {
+				@kit.LinkButton("New rule", "/rules/edit", kit.BtnOpts{Tone: kit.Primary, Size: kit.SM})
+			}
+			@kit.Hint() {
+				Rules run top to bottom on every uploaded activity — later rules see earlier edits.
+			}
+			@kit.Card() {
+				@kit.Table(kit.SM, []kit.Col{{Label: "Order", W: 16}, {Label: "Rule"}, {Label: "When"}, {Label: "Then"}, {Label: "Enabled", W: 20}, {}}) {
+					if len(rules) == 0 {
+						@kit.TR(kit.RowStyle{}) {
+							@kit.TD(kit.CellOpts{Colspan: 6, SM: true, Faint: true, Pad: 4}) {
+								No rules yet — create one and it runs on every new upload.
+							}
+						}
+					}
+					for i, r := range rules {
+						@kit.TR(kit.RowStyle{Hover: true}) {
+							@kit.TD(kit.CellOpts{}) {
+								@kit.Form(kit.FormOpts{Action: "/rules/move", Join: true}) {
+									@kit.HiddenInput("id", r.ID)
+									@kit.Button("↑", kit.BtnOpts{Size: kit.XS, Join: true, Disabled: i == 0, Name: "dir", Value: "up"})
+									@kit.Button("↓", kit.BtnOpts{Size: kit.XS, Join: true, Disabled: i == len(rules)-1, Name: "dir", Value: "down"})
+								}
+							}
+							@kit.TD(kit.CellOpts{}) {
+								@kit.T(r.Name, kit.TextOpts{Strong: true, Dim: !r.Enabled, Block: true})
+							}
+							@kit.TD(kit.CellOpts{XS: true, Faint: true, MaxW: 56}) {
+								{ r.When }
+							}
+							@kit.TD(kit.CellOpts{XS: true, Faint: true, MaxW: 56}) {
+								{ r.Then }
+							}
+							@kit.TD(kit.CellOpts{}) {
+								@kit.Toggle(kit.ToggleOpts{Checked: r.Enabled, Post: "/rules/toggle?id=" + r.ID, Tone: kit.Success, Size: kit.SM})
+							}
+							@kit.TD(kit.CellOpts{}) {
+								@kit.LinkButton("Edit", "/rules/edit?id="+r.ID, kit.BtnOpts{Ghost: true, Size: kit.XS})
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

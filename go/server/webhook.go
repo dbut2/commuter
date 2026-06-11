@@ -39,6 +39,16 @@ func (s *Server) webhookEvent(c *gin.Context) {
 		if err != nil || userID == "" {
 			return
 		}
+		if ev.AspectType == "update" {
+			known, err := s.proc.RefreshStravaData(ctx, userID, ev.ObjectID)
+			if err != nil {
+				log.Printf("commuter: webhook refresh: %v", err)
+				return
+			}
+			if known {
+				return
+			}
+		}
 		if err := s.proc.Enqueue(ctx, userID, ev.ObjectID); err != nil {
 			log.Printf("commuter: webhook enqueue: %v", err)
 			return

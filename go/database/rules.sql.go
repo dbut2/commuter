@@ -144,6 +144,22 @@ func (q *Queries) ListRules(ctx context.Context, userID uuid.UUID) ([]Rule, erro
 	return items, nil
 }
 
+const setRulePriority = `-- name: SetRulePriority :exec
+update rules set priority = $3, updated_at = now()
+where id = $1 and user_id = $2
+`
+
+type SetRulePriorityParams struct {
+	ID       uuid.UUID `json:"id"`
+	UserID   uuid.UUID `json:"user_id"`
+	Priority int32     `json:"priority"`
+}
+
+func (q *Queries) SetRulePriority(ctx context.Context, arg SetRulePriorityParams) error {
+	_, err := q.db.ExecContext(ctx, setRulePriority, arg.ID, arg.UserID, arg.Priority)
+	return err
+}
+
 const toggleRule = `-- name: ToggleRule :exec
 update rules
 set enabled = not enabled, updated_at = now()
@@ -162,7 +178,7 @@ func (q *Queries) ToggleRule(ctx context.Context, arg ToggleRuleParams) error {
 
 const updateRule = `-- name: UpdateRule :one
 update rules
-set name = $3, conditions = $4, actions = $5, updated_at = now()
+set name = $3, conditions = $4, actions = $5, enabled = $6, updated_at = now()
 where id = $1 and user_id = $2
 returning id, user_id, name, enabled, priority, conditions, actions, created_at, updated_at
 `
@@ -173,6 +189,7 @@ type UpdateRuleParams struct {
 	Name       string          `json:"name"`
 	Conditions json.RawMessage `json:"conditions"`
 	Actions    json.RawMessage `json:"actions"`
+	Enabled    bool            `json:"enabled"`
 }
 
 func (q *Queries) UpdateRule(ctx context.Context, arg UpdateRuleParams) (Rule, error) {
@@ -182,6 +199,7 @@ func (q *Queries) UpdateRule(ctx context.Context, arg UpdateRuleParams) (Rule, e
 		arg.Name,
 		arg.Conditions,
 		arg.Actions,
+		arg.Enabled,
 	)
 	var i Rule
 	err := row.Scan(

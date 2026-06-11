@@ -1,0 +1,93 @@
+package web
+
+import "dbut.dev/x/kit"
+
+templ ActivityDetailPage(a ActivityPage, initials string) {
+	@kit.AppShell(a.Name+" | commuter", nav("Activities", initials)) {
+		@kit.Page(kit.WidthMid) {
+			@kit.Breadcrumbs([]kit.Crumb{{Label: "Activities", Href: "/activities"}, {Label: a.Name}})
+			@kit.Card() {
+				@kit.CardBody(kit.BodyOpts{Pad: 5, Gap: 3}) {
+					@kit.Row(kit.RowOpts{Gap: 3, AlignStart: true, Wrap: true}) {
+						@kit.Grow(48) {
+							@kit.Row(kit.RowOpts{Gap: 2}) {
+								@kit.Title(a.Name)
+								@kit.Badge(a.Status, kit.BadgeOpts{Tone: statusTone(a.Status), Size: kit.SM})
+							}
+							@kit.T(a.Meta, kit.TextOpts{SM: true, Faint: true, Block: true})
+						}
+						@kit.LinkButton("View on Strava ↗", stravaURL(a.StravaID), kit.BtnOpts{Ghost: true, Size: kit.SM, NewTab: true})
+						@kit.FormButton("/activities/"+a.ID+"/rerun", "Re-run rules", kit.BtnOpts{Tone: kit.Primary, Size: kit.SM, Outline: true})
+					}
+					if a.JobStatus == "queued" || a.JobStatus == "waiting" {
+						@kit.Alert(kit.Warning) {
+							@kit.Icon("clock", 18)
+							@kit.Span() {
+								Waiting on provider data | next poll
+								@kit.B(a.NextRun)
+								| gives up { a.ExpiresAt }
+							}
+							@kit.FormButton("/activities/"+a.ID+"/rerun", "Poll now", kit.BtnOpts{Size: kit.XS})
+						}
+					}
+					if a.JobStatus == "failed" {
+						@kit.Alert(kit.Error) {
+							@kit.Span() {
+								Last run failed: { a.JobError }
+							}
+							@kit.FormButton("/activities/"+a.ID+"/rerun", "Retry", kit.BtnOpts{Size: kit.XS})
+						}
+					}
+				}
+			}
+			@kit.Card() {
+				@kit.PanelHeader() {
+					@kit.SectionLabel("Run log")
+					@kit.T("| why each rule did or didn't fire", kit.TextOpts{XS: true, Dim: true})
+				}
+				@kit.MonoPanel() {
+					if len(a.RunLog) == 0 {
+						@kit.T("not processed yet", kit.TextOpts{Faint: true, Block: true})
+					}
+					for _, r := range a.RunLog {
+						@runLogLine(r)
+					}
+				}
+			}
+			@kit.Grid2(4, 4) {
+				for _, p := range a.Providers {
+					@providerCard(p)
+				}
+			}
+		}
+	}
+}
+
+templ runLogLine(r RunRow) {
+	{{ mark, tone := runMark(r.Status) }}
+	@kit.MarkLine(mark, tone, r.Rule, runNote(r))
+}
+
+templ providerCard(p ProviderData) {
+	@kit.Card() {
+		@kit.CardBody(kit.BodyOpts{Pad: 4, Gap: 2}) {
+			@kit.Row(kit.RowOpts{Gap: 2}) {
+				@kit.T(p.Provider, kit.TextOpts{SM: true, Strong: true})
+				if p.Found {
+					@kit.Badge("found", kit.BadgeOpts{Tone: kit.Success, Size: kit.XS})
+				} else {
+					@kit.Badge("not found yet", kit.BadgeOpts{Tone: kit.Warning, Size: kit.XS})
+				}
+				@kit.Spacer()
+				@kit.T(p.FetchedAt, kit.TextOpts{XS: true, Dim: true})
+			}
+			if len(p.Data) > 0 {
+				@kit.KVTable(p.Data)
+			} else {
+				@kit.Hint() {
+					No data cached for this activity yet.
+				}
+			}
+		}
+	}
+}

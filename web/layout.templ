@@ -1,0 +1,19 @@
+package web
+
+import "dbut.dev/x/kit"
+
+templ LoginPage() {
+	@kit.Document("commuter") {
+		@kit.Center() {
+			@kit.CardNarrow() {
+				@kit.CardBody(kit.BodyOpts{Gap: 3, Center: true}) {
+					@kit.Title("commuter")
+					@kit.Muted() {
+						Rules that tidy up your Strava activities as they upload — commutes, parkruns, challenge totals.
+					}
+					@kit.FormButton("/connect", "Connect Strava", kit.BtnOpts{Tone: kit.Primary})
+				}
+			}
+		}
+	}
+}

@@ -12,11 +12,60 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/sqlc-dev/pqtype"
 )
 
+const activityIDByStrava = `-- name: ActivityIDByStrava :one
+select id from activities where user_id = $1 and strava_id = $2
+`
+
+type ActivityIDByStravaParams struct {
+	UserID   uuid.UUID `json:"user_id"`
+	StravaID int64     `json:"strava_id"`
+}
+
+func (q *Queries) ActivityIDByStrava(ctx context.Context, arg ActivityIDByStravaParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, activityIDByStrava, arg.UserID, arg.StravaID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const existingStravaIDs = `-- name: ExistingStravaIDs :many
+select strava_id from activities where user_id = $1 and strava_id = any($2::bigint[])
+`
+
+type ExistingStravaIDsParams struct {
+	UserID    uuid.UUID `json:"user_id"`
+	StravaIds []int64   `json:"strava_ids"`
+}
+
+func (q *Queries) ExistingStravaIDs(ctx context.Context, arg ExistingStravaIDsParams) ([]int64, error) {
+	rows, err := q.db.QueryContext(ctx, existingStravaIDs, arg.UserID, pq.Array(arg.StravaIds))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int64
+	for rows.Next() {
+		var strava_id int64
+		if err := rows.Scan(&strava_id); err != nil {
+			return nil, err
+		}
+		items = append(items, strava_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getActivity = `-- name: GetActivity :one
-select id, user_id, strava_id, status, applied_rules, activity_time, created_at, updated_at from activities where id = $1 and user_id = $2
+select id, user_id, strava_id, status, applied_rules, run_log, activity_time, created_at, updated_at from activities where id = $1 and user_id = $2
 `
 
 type GetActivityParams struct {
@@ -33,6 +82,7 @@ func (q *Queries) GetActivity(ctx context.Context, arg GetActivityParams) (Activ
 		&i.StravaID,
 		&i.Status,
 		&i.AppliedRules,
+		&i.RunLog,
 		&i.ActivityTime,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -42,16 +92,17 @@ func (q *Queries) GetActivity(ctx context.Context, arg GetActivityParams) (Activ
 
 const listFeed = `-- name: ListFeed :many
 select
-    a.id, a.user_id, a.strava_id, a.status, a.applied_rules, a.activity_time, a.created_at, a.updated_at,
+    a.id, a.user_id, a.strava_id, a.status, a.applied_rules, a.run_log, a.activity_time, a.created_at, a.updated_at,
     sd.data as strava_data,
     j.status as job_status,
     j.next_run as job_next_run,
-    j.expires_at as job_expires_at
+    j.expires_at as job_expires_at,
+    j.last_error as job_last_error
 from activities a
 left join provider_data sd on sd.activity_id = a.id and sd.provider = 'strava'
 left join jobs j on j.activity_id = a.id
 where a.user_id = $1
-order by a.activity_time desc nulls last, a.created_at desc
+order by coalesce(a.activity_time, a.created_at) desc
 `
 
 type ListFeedRow struct {
@@ -60,6 +111,7 @@ type ListFeedRow struct {
 	StravaID     int64                 `json:"strava_id"`
 	Status       string                `json:"status"`
 	AppliedRules json.RawMessage       `json:"applied_rules"`
+	RunLog       json.RawMessage       `json:"run_log"`
 	ActivityTime sql.NullTime          `json:"activity_time"`
 	CreatedAt    time.Time             `json:"created_at"`
 	UpdatedAt    time.Time             `json:"updated_at"`
@@ -67,6 +119,7 @@ type ListFeedRow struct {
 	JobStatus    sql.NullString        `json:"job_status"`
 	JobNextRun   sql.NullTime          `json:"job_next_run"`
 	JobExpiresAt sql.NullTime          `json:"job_expires_at"`
+	JobLastError sql.NullString        `json:"job_last_error"`
 }
 
 func (q *Queries) ListFeed(ctx context.Context, userID uuid.UUID) ([]ListFeedRow, error) {
@@ -84,6 +137,7 @@ func (q *Queries) ListFeed(ctx context.Context, userID uuid.UUID) ([]ListFeedRow
 			&i.StravaID,
 			&i.Status,
 			&i.AppliedRules,
+			&i.RunLog,
 			&i.ActivityTime,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -91,6 +145,7 @@ func (q *Queries) ListFeed(ctx context.Context, userID uuid.UUID) ([]ListFeedRow
 			&i.JobStatus,
 			&i.JobNextRun,
 			&i.JobExpiresAt,
+			&i.JobLastError,
 		); err != nil {
 			return nil, err
 		}
@@ -119,15 +174,30 @@ func (q *Queries) SetActivityStatus(ctx context.Context, arg SetActivityStatusPa
 	return err
 }
 
+const setActivityTime = `-- name: SetActivityTime :exec
+update activities set activity_time = $2, updated_at = now() where id = $1
+`
+
+type SetActivityTimeParams struct {
+	ID           uuid.UUID    `json:"id"`
+	ActivityTime sql.NullTime `json:"activity_time"`
+}
+
+func (q *Queries) SetActivityTime(ctx context.Context, arg SetActivityTimeParams) error {
+	_, err := q.db.ExecContext(ctx, setActivityTime, arg.ID, arg.ActivityTime)
+	return err
+}
+
 const upsertActivity = `-- name: UpsertActivity :one
-insert into activities (user_id, strava_id, status, applied_rules, activity_time)
-values ($1, $2, $3, $4, $5)
+insert into activities (user_id, strava_id, status, applied_rules, activity_time, run_log)
+values ($1, $2, $3, $4, $5, $6)
 on conflict (strava_id) do update
 set status = excluded.status,
     applied_rules = excluded.applied_rules,
     activity_time = coalesce(excluded.activity_time, activities.activity_time),
+    run_log = case when excluded.run_log = '[]'::jsonb then activities.run_log else excluded.run_log end,
     updated_at = now()
-returning id, user_id, strava_id, status, applied_rules, activity_time, created_at, updated_at
+returning id, user_id, strava_id, status, applied_rules, run_log, activity_time, created_at, updated_at
 `
 
 type UpsertActivityParams struct {
@@ -136,6 +206,7 @@ type UpsertActivityParams struct {
 	Status       string          `json:"status"`
 	AppliedRules json.RawMessage `json:"applied_rules"`
 	ActivityTime sql.NullTime    `json:"activity_time"`
+	RunLog       json.RawMessage `json:"run_log"`
 }
 
 func (q *Queries) UpsertActivity(ctx context.Context, arg UpsertActivityParams) (Activity, error) {
@@ -145,6 +216,7 @@ func (q *Queries) UpsertActivity(ctx context.Context, arg UpsertActivityParams) 
 		arg.Status,
 		arg.AppliedRules,
 		arg.ActivityTime,
+		arg.RunLog,
 	)
 	var i Activity
 	err := row.Scan(
@@ -153,6 +225,7 @@ func (q *Queries) UpsertActivity(ctx context.Context, arg UpsertActivityParams) 
 		&i.StravaID,
 		&i.Status,
 		&i.AppliedRules,
+		&i.RunLog,
 		&i.ActivityTime,
 		&i.CreatedAt,
 		&i.UpdatedAt,

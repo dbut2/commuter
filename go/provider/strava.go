@@ -42,7 +42,7 @@ var stravaData = []core.Field{
 	field("activity_time_of_day", "10:25am", core.TypeTime, func(a core.Activity) time.Time { return a.Time }),
 	field("activity_date", "10/05/2026", core.TypeDate, func(a core.Activity) time.Time { return a.Time }),
 	field("activity_day_of_week", "Sunday", core.TypeEnum(weekdays...), func(a core.Activity) string { return a.Time.Weekday().String() }),
-	field("activity_distance", "10.0km", core.TypeNumber, func(a core.Activity) *big.Rat { return new(big.Rat).SetFloat64(a.Distance) }),
+	field("activity_distance", "10.0", core.TypeNumber, func(a core.Activity) *big.Rat { return new(big.Rat).SetFloat64(a.Distance / 1000) }),
 	field("activity_moving_duration", "25:49", core.TypeDuration, func(a core.Activity) time.Duration { return a.MovingDuration }),
 	field("activity_elapsed_duration", "25:51", core.TypeDuration, func(a core.Activity) time.Duration { return a.ElapsedDuration }),
 	field("activity_start_location", "[0.0, 0.0]", core.TypeCoords, func(a core.Activity) [2]float64 { return a.StartLoc }),

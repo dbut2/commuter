@@ -14,6 +14,7 @@ import (
 type Result struct {
 	Matched bool
 	Pending bool
+	Failed  *Cond
 }
 
 type Engine struct {
@@ -115,7 +116,8 @@ func (e *Engine) evaluate(ctx context.Context, c cache, rule Rule, a core.Activi
 			continue
 		}
 		if !matched {
-			return Result{Matched: false}, nil
+			failed := cond
+			return Result{Matched: false, Failed: &failed}, nil
 		}
 	}
 	if pending {
@@ -140,9 +142,29 @@ func (e *Engine) checkCond(ctx context.Context, c cache, cond Cond, a core.Activ
 	if op == nil {
 		return false, false, fmt.Errorf("engine: field %q has no operator %q", cond.Field, cond.Op)
 	}
-	operand, err := parseOperand(field.Type.Kind, cond.Value)
-	if err != nil {
-		return false, false, fmt.Errorf("engine: condition %q: %w", cond.Field, err)
+	operandStr := cond.Value
+	if strings.Contains(operandStr, "{") {
+		s, pend, err := e.render(ctx, c, operandStr, a)
+		if err != nil {
+			return false, false, err
+		}
+		if pend {
+			return false, false, nil
+		}
+		operandStr = s
+	}
+	var operand any
+	if op.Multi {
+		parts := strings.Split(operandStr, ",")
+		for i := range parts {
+			parts[i] = strings.TrimSpace(parts[i])
+		}
+		operand = parts
+	} else {
+		operand, err = parseOperand(field.Type.Kind, operandStr)
+		if err != nil {
+			return false, false, fmt.Errorf("engine: condition %q: %w", cond.Field, err)
+		}
 	}
 	matched, err = op.Eval(val, operand)
 	return matched, true, err
@@ -232,39 +254,14 @@ func parseOperand(kind core.Kind, s string) (any, error) {
 	case core.KindBool:
 		return strconv.ParseBool(s)
 	case core.KindDuration:
-		return parseDuration(s)
+		return core.ParseDuration(s)
 	case core.KindTime, core.KindDate, core.KindDatetime:
-		return parseTime(s)
+		return core.ParseTime(s)
+	case core.KindCoords:
+		return core.ParseNearTarget(s)
 	default:
 		return s, nil
 	}
-}
-
-func parseDuration(s string) (time.Duration, error) {
-	if d, err := time.ParseDuration(s); err == nil {
-		return d, nil
-	}
-	parts := strings.Split(s, ":")
-	var secs int
-	for _, p := range parts {
-		n, err := strconv.Atoi(strings.TrimSpace(p))
-		if err != nil {
-			return 0, fmt.Errorf("bad duration %q", s)
-		}
-		secs = secs*60 + n
-	}
-	return time.Duration(secs) * time.Second, nil
-}
-
-var timeLayouts = []string{"15:04", "3:04pm", "3:04PM", "02/01/2006", "2006-01-02", time.RFC3339}
-
-func parseTime(s string) (time.Time, error) {
-	for _, l := range timeLayouts {
-		if t, err := time.Parse(l, strings.TrimSpace(s)); err == nil {
-			return t, nil
-		}
-	}
-	return time.Time{}, fmt.Errorf("bad time %q", s)
 }
 
 func Format(v any) string { return format(v) }
@@ -284,6 +281,8 @@ func format(v any) string {
 		return formatDuration(x)
 	case time.Time:
 		return x.Format("2006-01-02 15:04")
+	case [2]float64:
+		return fmt.Sprintf("%g, %g", x[0], x[1])
 	default:
 		return fmt.Sprint(v)
 	}

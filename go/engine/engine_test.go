@@ -24,7 +24,7 @@ func eng() *Engine { return New(provider.Strava{}) }
 func TestEvaluate_EnumAndNumberMatch(t *testing.T) {
 	r := Rule{Conds: []Cond{
 		{Field: "strava.activity_type", Op: "eq", Value: "Run"},
-		{Field: "strava.activity_distance", Op: "gt", Value: "10000"},
+		{Field: "strava.activity_distance", Op: "gt", Value: "10"},
 	}}
 	got, err := eng().Evaluate(context.Background(), r, testActivity())
 	if err != nil {
@@ -37,7 +37,7 @@ func TestEvaluate_EnumAndNumberMatch(t *testing.T) {
 
 func TestEvaluate_NumberNoMatch(t *testing.T) {
 	r := Rule{Conds: []Cond{
-		{Field: "strava.activity_distance", Op: "gt", Value: "20000"},
+		{Field: "strava.activity_distance", Op: "gt", Value: "20"},
 	}}
 	got, err := eng().Evaluate(context.Background(), r, testActivity())
 	if err != nil {
@@ -74,7 +74,7 @@ func TestEvaluate_DurationGreater(t *testing.T) {
 func TestApply_TitleTemplateAndFlags(t *testing.T) {
 	a := testActivity()
 	r := Rule{Acts: []Act{
-		{Key: "title", Template: "Run · {strava.activity_distance}m"},
+		{Key: "title", Template: "Run | {strava.activity_distance}km"},
 		{Key: "commute", Template: "true"},
 	}}
 	res, err := eng().Apply(context.Background(), r, &a)
@@ -84,7 +84,7 @@ func TestApply_TitleTemplateAndFlags(t *testing.T) {
 	if res.Pending {
 		t.Fatalf("did not expect pending")
 	}
-	if a.Name != "Run · 12000m" {
+	if a.Name != "Run | 12km" {
 		t.Fatalf("title = %q", a.Name)
 	}
 	if !a.Commute {
