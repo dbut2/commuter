@@ -18,6 +18,7 @@ type Activity struct {
 	StravaID     int64           `json:"strava_id"`
 	Status       string          `json:"status"`
 	AppliedRules json.RawMessage `json:"applied_rules"`
+	RunLog       json.RawMessage `json:"run_log"`
 	ActivityTime sql.NullTime    `json:"activity_time"`
 	CreatedAt    time.Time       `json:"created_at"`
 	UpdatedAt    time.Time       `json:"updated_at"`
@@ -67,4 +68,13 @@ type User struct {
 	ParkrunID       sql.NullString `json:"parkrun_id"`
 	CreatedAt       time.Time      `json:"created_at"`
 	UpdatedAt       time.Time      `json:"updated_at"`
+}
+
+type Var struct {
+	UserID    uuid.UUID `json:"user_id"`
+	Name      string    `json:"name"`
+	Type      string    `json:"type"`
+	Value     string    `json:"value"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }

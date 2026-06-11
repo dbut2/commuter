@@ -1,0 +1,56 @@
+package web
+
+import "dbut.dev/x/kit"
+
+templ DashboardPage(d Dashboard, initials string) {
+	@kit.AppShell("Activities | commuter", nav("Activities", initials)) {
+		@kit.Page(kit.WidthNarrow) {
+			@kit.PageHeader("Activities") {
+				@kit.FormButton("/activities/sync", "Sync from Strava", kit.BtnOpts{Size: kit.SM, Outline: true})
+			}
+			@kit.Tabs() {
+				@kit.Tab("All", "/activities", d.Filter == "", 0, "")
+				@kit.Tab("Pending", "/activities?status=pending", d.Filter == "pending", d.PendingCount, kit.Warning)
+				@kit.Tab("Failed", "/activities?status=failed", d.Filter == "failed", d.FailedCount, kit.Error)
+			}
+			if len(d.Cards) == 0 {
+				@kit.Card() {
+					@kit.CardBody(kit.BodyOpts{Pad: 5}) {
+						@kit.Muted() {
+							No activities here yet. Uploads arrive via the Strava webhook and show up as they're processed.
+						}
+					}
+				}
+			}
+			@kit.Stack(3) {
+				for _, a := range d.Cards {
+					@activityCard(a)
+				}
+			}
+		}
+	}
+}
+
+templ activityCard(a ActivityCard) {
+	@kit.LinkCard("/activities/" + a.ID) {
+		@kit.CardBody(kit.BodyOpts{Pad: 4, Gap: 2}) {
+			@kit.Row(kit.RowOpts{Gap: 2}) {
+				@kit.T(a.Name, kit.TextOpts{Strong: true, Grow: true})
+				@kit.Badge(a.Status, kit.BadgeOpts{Tone: statusTone(a.Status), Size: kit.SM})
+			}
+			@kit.T(a.Meta, kit.TextOpts{XS: true, Faint: true, Block: true})
+			@kit.Row(kit.RowOpts{Gap: 2, Wrap: true}) {
+				if len(a.Rules) == 0 {
+					@kit.T("no rules matched", kit.TextOpts{XS: true, Faint: true})
+				}
+				for _, r := range a.Rules {
+					@kit.Badge(r, kit.BadgeOpts{Tone: kit.Primary, Outline: true, Size: kit.SM})
+				}
+				if a.Note != "" {
+					@kit.Spacer()
+					@kit.T(a.Note, noteStyle(a.Status))
+				}
+			}
+		}
+	}
+}

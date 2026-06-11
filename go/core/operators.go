@@ -30,6 +30,7 @@ var operators = map[Kind][]Operator{
 	KindDate:     orderedOps(compareTime),
 	KindTime:     orderedOps(compareTime),
 	KindDatetime: orderedOps(compareTime),
+	KindCoords:   coordsOps,
 }
 
 var stringOps = []Operator{
@@ -46,6 +47,23 @@ var enumOps = []Operator{
 
 var boolOps = []Operator{
 	{Name: "eq", Label: "is", Eval: equal[bool]},
+}
+
+var coordsOps = []Operator{
+	{Name: "near", Label: "is near", Eval: near},
+	{Name: "not_near", Label: "is not near", Eval: not(near)},
+}
+
+func near(value, operand any) (bool, error) {
+	v, err := as[[2]float64](value)
+	if err != nil {
+		return false, err
+	}
+	t, err := as[NearTarget](operand)
+	if err != nil {
+		return false, err
+	}
+	return HaversineMetres(v, t.Coords) <= t.Radius, nil
 }
 
 type compare func(value, operand any) (int, error)

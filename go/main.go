@@ -44,7 +44,7 @@ func main() {
 
 	if webhookToken != "" && strings.HasPrefix(baseURL, "https://") {
 		go func() {
-			cb := strings.TrimRight(baseURL, "/") + "/webhook/strava"
+			cb := strings.TrimRight(baseURL, "/") + "/strava/webhook"
 			if err := auth.EnsureSubscription(context.Background(), cb, webhookToken); err != nil {
 				log.Printf("commuter: webhook subscription: %v", err)
 			}

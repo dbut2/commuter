@@ -1,0 +1,39 @@
+package web
+
+import "dbut.dev/x/kit"
+
+templ SettingsPage(parkrunID string, saved bool, initials string) {
+	@kit.AppShell("Settings | commuter", nav("", initials)) {
+		@kit.Page(kit.WidthNarrow) {
+			@kit.Title("Settings")
+			if saved {
+				@kit.Alert(kit.Success) {
+					Saved.
+				}
+			}
+			@kit.Card() {
+				@kit.CardBody(kit.BodyOpts{Pad: 5, Gap: 3}) {
+					@kit.SectionLabel("parkrun")
+					@kit.Muted() {
+						Your parkrun athlete ID — the A-number on your barcode. Rules that use
+						@kit.Code("{parkrun.*}")
+						tokens are skipped until this is set.
+					}
+					@kit.Form(kit.FormOpts{Action: "/settings/parkrun", Row: true}) {
+						@kit.TextInput(kit.InputOpts{Name: "parkrun_id", Value: parkrunID, Size: kit.SM, W: "40", Mono: true, Placeholder: "A1234567", Pattern: "[Aa]?[0-9]*", Title: "A followed by digits, or empty to disconnect"})
+						@kit.Button("Save", kit.BtnOpts{Tone: kit.Primary, Size: kit.SM})
+					}
+				}
+			}
+			@kit.Card() {
+				@kit.CardBody(kit.BodyOpts{Pad: 5, Gap: 3}) {
+					@kit.SectionLabel("Account")
+					@kit.Row(kit.RowOpts{Gap: 2}) {
+						@kit.FormButton("/logout", "Log out", kit.BtnOpts{Size: kit.SM})
+						@kit.FormButton("/account/delete", "Delete account", kit.BtnOpts{Size: kit.SM, Outline: true, Tone: kit.Error, Confirm: "Delete your account and all its data? This cannot be undone."})
+					}
+				}
+			}
+		}
+	}
+}

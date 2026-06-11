@@ -26,6 +26,16 @@ create table rules (
     updated_at timestamptz not null default now()
 );
 
+create table vars (
+    user_id    uuid        not null references users (id) on delete cascade,
+    name       text        not null,
+    type       text        not null,
+    value      text        not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    primary key (user_id, name)
+);
+
 create table activities (
     id            uuid        primary key default gen_random_uuid(),
     user_id       uuid        not null references users (id) on delete cascade,
@@ -33,6 +43,7 @@ create table activities (
     status        text        not null default 'unprocessed'
         check (status in ('unprocessed', 'pending', 'processed')),
     applied_rules jsonb       not null default '[]'::jsonb,
+    run_log       jsonb       not null default '[]'::jsonb,
     activity_time timestamptz,
     created_at    timestamptz not null default now(),
     updated_at    timestamptz not null default now()
@@ -64,6 +75,7 @@ create index jobs_claimable_idx on jobs (next_run) where status = 'queued';
 drop table if exists jobs;
 drop table if exists provider_data;
 drop table if exists activities;
+drop table if exists vars;
 drop table if exists rules;
 drop table if exists strava_credentials;
 drop table if exists users;

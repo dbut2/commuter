@@ -166,6 +166,104 @@ func TestProcess_ParkrunRuleSkippedWhenUnconnected(t *testing.T) {
 	}
 }
 
+func TestSync_EnqueuesOnlyNewActivities(t *testing.T) {
+	proc, repo, sqlDB := testProcessor(t)
+	defer func() { _ = sqlDB.Close() }()
+	ctx := context.Background()
+	uid := seedUser(t, repo, 55555)
+
+	if _, err := repo.UpsertActivity(ctx, uid, 101, "processed", nil, time.Now(), nil); err != nil {
+		t.Fatal(err)
+	}
+	fake := &fakeStrava{ids: []int64{101, 102, 103}}
+	proc.stravaFactory = func(context.Context, *oauth2.Token) strava.StravaAPI { return fake }
+
+	added, err := proc.Sync(ctx, uid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if added != 2 {
+		t.Fatalf("added = %d, want 2", added)
+	}
+
+	feed, err := repo.Feed(ctx, uid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(feed) != 3 {
+		t.Fatalf("feed len = %d", len(feed))
+	}
+	for _, it := range feed {
+		switch it.StravaID {
+		case 101:
+			if it.Status != "processed" || it.Job != nil {
+				t.Fatalf("existing activity 101 should be untouched: status=%q job=%+v", it.Status, it.Job)
+			}
+		case 102, 103:
+			if it.Status != "unprocessed" || it.Job == nil {
+				t.Fatalf("new activity %d should be queued: status=%q job=%+v", it.StravaID, it.Status, it.Job)
+			}
+		}
+	}
+}
+
+func TestRefreshStravaData_UpdatesCacheWithoutRerunningRules(t *testing.T) {
+	proc, repo, sqlDB := testProcessor(t)
+	defer func() { _ = sqlDB.Close() }()
+	ctx := context.Background()
+	uid := seedUser(t, repo, 66666)
+
+	rule := &engine.Rule{
+		Name:  "Name runs",
+		Conds: []engine.Cond{{Field: "strava.activity_type", Op: "eq", Value: "Run"}},
+		Acts:  []engine.Act{{Key: "title", Template: "Auto: {strava.activity_type}"}},
+	}
+	if err := repo.CreateRule(ctx, uid, rule); err != nil {
+		t.Fatal(err)
+	}
+
+	fake := &fakeStrava{act: core.Activity{ID: 999, Type: "Run", Name: "old", Time: time.Now()}}
+	proc.stravaFactory = func(context.Context, *oauth2.Token) strava.StravaAPI { return fake }
+	if _, _, err := proc.process(ctx, uid, 999); err != nil {
+		t.Fatal(err)
+	}
+
+	fake.act.Name = "Renamed on Strava"
+	fake.act.Type = "Ride"
+	fake.updated = nil
+
+	known, err := proc.RefreshStravaData(ctx, uid, 999)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !known {
+		t.Fatal("activity should be known")
+	}
+	if fake.updated != nil {
+		t.Fatalf("refresh must not write to strava, got %+v", fake.updated)
+	}
+
+	feed, err := repo.Feed(ctx, uid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(feed) != 1 {
+		t.Fatalf("feed len = %d", len(feed))
+	}
+	it := feed[0]
+	if it.Strava["activity_name"] != "Renamed on Strava" {
+		t.Fatalf("cached name = %q", it.Strava["activity_name"])
+	}
+	if it.Status != "processed" || len(it.AppliedRules) != 1 {
+		t.Fatalf("rules must be untouched: status=%q applied=%v", it.Status, it.AppliedRules)
+	}
+
+	known, err = proc.RefreshStravaData(ctx, uid, 12345)
+	if err != nil || known {
+		t.Fatalf("unknown activity: known=%v err=%v", known, err)
+	}
+}
+
 func TestProcess_NonMatchingActivityNotPending(t *testing.T) {
 	proc, repo, sqlDB := testProcessor(t)
 	defer func() { _ = sqlDB.Close() }()

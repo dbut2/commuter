@@ -6,3 +6,6 @@ set data = excluded.data, found = excluded.found, fetched_at = now();
 
 -- name: GetProviderData :one
 select data, found from provider_data where activity_id = $1 and provider = $2;
+
+-- name: ListProviderData :many
+select * from provider_data where activity_id = $1 order by provider;

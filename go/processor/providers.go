@@ -22,16 +22,31 @@ func (p *Processor) userProviders(ctx context.Context, userID string) ([]core.Pr
 		providers = append(providers, provider.Parkrun{ParkrunID: parseParkrunID(parkrunID)})
 	}
 
+	vars, err := p.repo.Vars(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	defs := make([]provider.VarDef, len(vars))
+	for i, v := range vars {
+		defs[i] = provider.VarDef{Name: v.Name, Kind: core.Kind(v.Type), Value: v.Value}
+	}
+	providers = append(providers, provider.Vars{Defs: defs})
+
 	return providers, nil
 }
 
-func providersAvailable(needed []string, available map[string]bool) bool {
+func (p *Processor) Catalog(ctx context.Context, userID string) ([]core.Provider, error) {
+	return p.userProviders(ctx, userID)
+}
+
+func missingProviders(needed []string, available map[string]bool) []string {
+	var missing []string
 	for _, p := range needed {
 		if !available[p] {
-			return false
+			missing = append(missing, p)
 		}
 	}
-	return true
+	return missing
 }
 
 func parseParkrunID(s string) int64 {

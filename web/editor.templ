@@ -1,0 +1,123 @@
+package web
+
+import "dbut.dev/x/kit"
+
+templ EditorPage(e Editor, initials string) {
+	@kit.AppShell(editorTitle(e)+" | commuter", nav("Rules", initials)) {
+		@kit.Page(kit.WidthMid) {
+			@kit.Breadcrumbs([]kit.Crumb{{Label: "Rules", Href: "/rules"}, {Label: editorTitle(e)}})
+			if e.Error != "" {
+				@kit.Alert(kit.Error) {
+					{ e.Error }
+				}
+			}
+			@kit.CardForm("/rules/save?id=" + e.ID) {
+				@kit.CardBody(kit.BodyOpts{Pad: 5, Gap: 5}) {
+					@kit.Row(kit.RowOpts{Gap: 4, AlignEnd: true}) {
+						@kit.Field("Name", true) {
+							@kit.TextInput(kit.InputOpts{Name: "name", Value: e.Name, Size: kit.SM, Required: true, Placeholder: "parkrun title"})
+						}
+						@kit.LabelToggle("Enabled", "enabled", e.Enabled)
+					}
+					@kit.Stack(2) {
+						@kit.SectionLabel("When all conditions match")
+						@kit.StackID("conds", 2) {
+							for _, c := range e.Conds {
+								@CondRow(e.Catalog, c)
+							}
+						}
+						@kit.FragmentButton("+ Add condition", "/rules/rows/cond", "#conds")
+					}
+					@kit.Stack(2) {
+						@kit.SectionLabel("Then")
+						@kit.StackID("acts", 2) {
+							for _, a := range e.Acts {
+								@ActRow(a)
+							}
+						}
+						@kit.FragmentButton("+ Add action", "/rules/rows/act", "#acts")
+					}
+					@TokenRef(e.Catalog)
+					@kit.ActionBar() {
+						@kit.Button("Save rule", kit.BtnOpts{Tone: kit.Primary, Size: kit.SM})
+						@kit.LinkButton("Cancel", "/rules", kit.BtnOpts{Ghost: true, Size: kit.SM})
+						@kit.Spacer()
+						if e.ID != "" {
+							@kit.Button("Delete", kit.BtnOpts{Ghost: true, Size: kit.SM, Danger: true, FormAction: "/rules/delete?id=" + e.ID, Confirm: "Delete this rule?"})
+						}
+					}
+				}
+			}
+			@kit.Datalist("var-tokens", varTokens(e.Catalog))
+			@kit.TokenInsertScript()
+		}
+	}
+}
+
+func editorTitle(e Editor) string {
+	if e.ID == "" {
+		return "New rule"
+	}
+	return e.Name
+}
+
+templ CondRow(catalog []Provider, c CondRowVM) {
+	{{ f, _ := FindField(catalog, c.Field) }}
+	{{ op := findOp(f, c.Op) }}
+	@kit.EditRow("cond-row", kit.GridFieldOpValue) {
+		@kit.GroupedSelect(kit.SelectOpts{Name: "cond_field", Size: kit.SM, Mono: true, MobileWide: true, Selected: c.Field, Refresh: &kit.Refresh{URL: "/rules/rows/cond", Row: ".cond-row"}}, fieldGroups(catalog))
+		@kit.Select(kit.SelectOpts{Name: "cond_op", Size: kit.SM, Selected: op.Name, Refresh: &kit.Refresh{URL: "/rules/rows/cond", Row: ".cond-row"}}, opOptions(f))
+		@condValue(f, op, c.Value)
+		@kit.RemoveButton(".cond-row")
+	}
+}
+
+templ condValue(f Field, op Op, value string) {
+	if op.Multi {
+		@kit.TextInput(kit.InputOpts{Name: "cond_value", Value: value, Size: kit.SM, Mono: true, Placeholder: "comma, separated, values"})
+	} else {
+		switch f.Kind {
+			case "enum":
+				@kit.Select(kit.SelectOpts{Name: "cond_value", Size: kit.SM, Selected: value}, valueOptions(f.Values))
+			case "bool":
+				@kit.Select(kit.SelectOpts{Name: "cond_value", Size: kit.SM, Selected: boolSel(value)}, boolOptions())
+			case "coords":
+				@kit.TextInput(kit.InputOpts{Name: "cond_value", Value: value, Size: kit.SM, Mono: true, Placeholder: "{vars.home} 300m", List: "var-tokens", Title: "a coords value or variable, with an optional radius — defaults to 300m"})
+			default:
+				@kit.TextInput(kit.InputOpts{Name: "cond_value", Value: value, Size: kit.SM, Mono: true, Placeholder: f.Example, List: "var-tokens"})
+		}
+	}
+}
+
+templ ActRow(a ActRowVM) {
+	{{ opt := findAct(a.Key) }}
+	@kit.EditRow("act-row", kit.GridKeyValue) {
+		@kit.Select(kit.SelectOpts{Name: "act_key", Size: kit.SM, Selected: a.Key, Refresh: &kit.Refresh{URL: "/rules/rows/act", Row: ".act-row"}}, actSelOptions())
+		if opt.Bool {
+			@kit.Select(kit.SelectOpts{Name: "act_template", Size: kit.SM, Fit: true, Selected: boolSel(a.Template)}, boolOptions())
+		} else {
+			@kit.TextInput(kit.InputOpts{Name: "act_template", Value: a.Template, Size: kit.SM, Mono: true, TokenTarget: true, Placeholder: "{parkrun.event_name} #{parkrun.event_number}"})
+		}
+		@kit.RemoveButton(".act-row")
+	}
+}
+
+templ TokenRef(catalog []Provider) {
+	@kit.Collapse("Available template tokens") {
+		@kit.Hint() {
+			Tokens work in action templates and condition values alike. Click one to insert it into the focused action input.
+		}
+		@kit.Grid2(6, 1) {
+			for _, p := range catalog {
+				if len(p.Fields) > 0 {
+					@kit.Small() {
+						@kit.GroupHeading(p.Name, p.Note)
+						for _, f := range p.Fields {
+							@kit.TokenLine("{"+p.Name+"."+f.Key+"}", f.Example)
+						}
+					}
+				}
+			}
+		}
+	}
+}

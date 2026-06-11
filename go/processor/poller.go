@@ -14,7 +14,7 @@ const (
 )
 
 func (p *Processor) Enqueue(ctx context.Context, userID string, stravaID int64) error {
-	aid, err := p.repo.UpsertActivity(ctx, userID, stravaID, "unprocessed", nil, time.Time{})
+	aid, err := p.repo.UpsertActivity(ctx, userID, stravaID, "unprocessed", nil, time.Time{}, nil)
 	if err != nil {
 		return err
 	}

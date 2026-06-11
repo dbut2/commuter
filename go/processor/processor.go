@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 
 	"golang.org/x/oauth2"
@@ -45,6 +46,56 @@ func (p *Processor) stravaAPIFor(ctx context.Context, userID string) (strava.Str
 	return p.stravaFactory(ctx, &tok), nil
 }
 
+const syncBatch = 30
+
+func (p *Processor) Sync(ctx context.Context, userID string) (int, error) {
+	api, err := p.stravaAPIFor(ctx, userID)
+	if err != nil {
+		return 0, err
+	}
+	ids, err := api.ListActivities(ctx, syncBatch)
+	if err != nil {
+		return 0, err
+	}
+	existing, err := p.repo.ExistingStravaIDs(ctx, userID, ids)
+	if err != nil {
+		return 0, err
+	}
+	added := 0
+	for _, id := range ids {
+		if existing[id] {
+			continue
+		}
+		if err := p.Enqueue(ctx, userID, id); err != nil {
+			return 0, err
+		}
+		added++
+	}
+	if added > 0 {
+		p.KickPoll()
+	}
+	return added, nil
+}
+
+func (p *Processor) RefreshStravaData(ctx context.Context, userID string, stravaID int64) (bool, error) {
+	activityID, err := p.repo.ActivityIDByStrava(ctx, userID, stravaID)
+	if err != nil || activityID == "" {
+		return false, err
+	}
+	api, err := p.stravaAPIFor(ctx, userID)
+	if err != nil {
+		return true, err
+	}
+	act, err := api.GetActivity(ctx, stravaID)
+	if err != nil {
+		return true, err
+	}
+	if err := p.repo.SetProviderData(ctx, activityID, "strava", stravaBlob(ctx, act), true); err != nil {
+		return true, err
+	}
+	return true, p.repo.SetActivityTime(ctx, activityID, act.Time)
+}
+
 func (p *Processor) process(ctx context.Context, userID string, stravaID int64) (activityID string, pending bool, err error) {
 	api, err := p.stravaAPIFor(ctx, userID)
 	if err != nil {
@@ -68,7 +119,8 @@ func (p *Processor) process(ctx context.Context, userID string, stravaID int64) 
 	run := eng.NewRun()
 
 	var applied []string
-	applied, pending, err = runRules(ctx, run, userRules, providerSet(providers), &act)
+	var runLog []store.RunEntry
+	applied, runLog, pending, err = runRules(ctx, run, userRules, providerSet(providers), &act)
 	if err != nil {
 		return "", false, err
 	}
@@ -83,47 +135,60 @@ func (p *Processor) process(ctx context.Context, userID string, stravaID int64) 
 	if pending {
 		status = "pending"
 	}
-	activityID, err = p.repo.UpsertActivity(ctx, userID, stravaID, status, applied, act.Time)
+	activityID, err = p.repo.UpsertActivity(ctx, userID, stravaID, status, applied, act.Time, runLog)
 	if err != nil {
 		return "", false, err
 	}
 
-	if err := p.cacheProviderData(ctx, activityID, act, run); err != nil {
+	if err := p.cacheProviderData(ctx, activityID, act, run, providers); err != nil {
 		return "", false, err
 	}
 	return activityID, pending, nil
 }
 
-func runRules(ctx context.Context, run *engine.Run, rules []*engine.Rule, available map[string]bool, act *core.Activity) (applied []string, pending bool, err error) {
+func runRules(ctx context.Context, run *engine.Run, rules []*engine.Rule, available map[string]bool, act *core.Activity) (applied []string, runLog []store.RunEntry, pending bool, err error) {
+	logEntry := func(r *engine.Rule, status, note string) {
+		runLog = append(runLog, store.RunEntry{Rule: r.Name, Status: status, Note: note})
+	}
 	for _, r := range rules {
 		if !r.Enabled {
+			logEntry(r, "disabled", "")
 			continue
 		}
-		if !providersAvailable(engine.RuleProviders(r.Conds, r.Acts), available) {
+		if missing := missingProviders(engine.RuleProviders(r.Conds, r.Acts), available); len(missing) > 0 {
+			logEntry(r, "skipped", "needs "+strings.Join(missing, ", "))
 			continue
 		}
 		ev, err := run.Evaluate(ctx, *r, *act)
 		if err != nil {
-			return nil, false, err
+			return nil, nil, false, err
 		}
 		if ev.Pending {
 			pending = true
+			logEntry(r, "pending", "waiting on provider data")
 			continue
 		}
 		if !ev.Matched {
+			note := ""
+			if c := ev.Failed; c != nil {
+				note = fmt.Sprintf("%s %s %s: no match", c.Field, c.Op, c.Value)
+			}
+			logEntry(r, "no_match", note)
 			continue
 		}
 		ap, err := run.Apply(ctx, *r, act)
 		if err != nil {
-			return nil, false, err
+			return nil, nil, false, err
 		}
 		if ap.Pending {
 			pending = true
+			logEntry(r, "pending", "conditions matched, waiting on data for templates")
 			continue
 		}
 		applied = append(applied, r.Name)
+		logEntry(r, "applied", "")
 	}
-	return applied, pending, nil
+	return applied, runLog, pending, nil
 }
 
 func providerSet(providers []core.Provider) map[string]bool {
@@ -134,23 +199,45 @@ func providerSet(providers []core.Provider) map[string]bool {
 	return m
 }
 
-func (p *Processor) cacheProviderData(ctx context.Context, activityID string, act core.Activity, run *engine.Run) error {
+func (p *Processor) cacheProviderData(ctx context.Context, activityID string, act core.Activity, run *engine.Run, providers []core.Provider) error {
 	if err := p.repo.SetProviderData(ctx, activityID, "strava", stravaBlob(ctx, act), true); err != nil {
 		return err
 	}
-	for prov, pv := range run.Fetched() {
-		if prov == "strava" {
+	fetched := run.Fetched()
+	for _, prov := range providers {
+		name := prov.Name()
+		if name == "strava" || name == "vars" {
 			continue
 		}
-		data, err := json.Marshal(pv.Values)
+		pv, touched := fetched[name]
+		if !touched {
+			continue
+		}
+		values := pv.Values
+		if pv.Found {
+			values = providerBlob(ctx, prov, act)
+		}
+		data, err := json.Marshal(values)
 		if err != nil {
 			return err
 		}
-		if err := p.repo.SetProviderData(ctx, activityID, prov, data, pv.Found); err != nil {
+		if err := p.repo.SetProviderData(ctx, activityID, name, data, pv.Found); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func providerBlob(ctx context.Context, prov core.Provider, act core.Activity) map[string]string {
+	m := map[string]string{}
+	for _, f := range prov.Data() {
+		v, found, err := f.Fetch(ctx, act)
+		if err != nil || !found {
+			continue
+		}
+		m[f.Name] = engine.Format(v)
+	}
+	return m
 }
 
 func diffUpdate(base, act core.Activity) strava.ActivityUpdate {
@@ -175,14 +262,6 @@ func diffUpdate(base, act core.Activity) strava.ActivityUpdate {
 }
 
 func stravaBlob(ctx context.Context, act core.Activity) []byte {
-	m := map[string]string{}
-	for _, f := range (provider.Strava{}).Data() {
-		v, found, err := f.Fetch(ctx, act)
-		if err != nil || !found {
-			continue
-		}
-		m[f.Name] = engine.Format(v)
-	}
-	b, _ := json.Marshal(m)
+	b, _ := json.Marshal(providerBlob(ctx, provider.Strava{}, act))
 	return b
 }

@@ -7,6 +7,7 @@ RUN go mod download
 
 COPY ./db ./db
 COPY ./go ./go
+COPY ./web ./web
 
 RUN go build -o /bin/server ./go
 

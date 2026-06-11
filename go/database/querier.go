@@ -12,13 +12,16 @@ import (
 )
 
 type Querier interface {
+	ActivityIDByStrava(ctx context.Context, arg ActivityIDByStravaParams) (uuid.UUID, error)
 	ClaimJobs(ctx context.Context, limit int32) ([]ClaimJobsRow, error)
 	CompleteJob(ctx context.Context, arg CompleteJobParams) error
 	CountRules(ctx context.Context, userID uuid.UUID) (int64, error)
 	CreateRule(ctx context.Context, arg CreateRuleParams) (Rule, error)
 	DeleteRule(ctx context.Context, arg DeleteRuleParams) error
 	DeleteUser(ctx context.Context, id uuid.UUID) error
+	DeleteVar(ctx context.Context, arg DeleteVarParams) error
 	EnsureUser(ctx context.Context, arg EnsureUserParams) (User, error)
+	ExistingStravaIDs(ctx context.Context, arg ExistingStravaIDsParams) ([]int64, error)
 	GetActivity(ctx context.Context, arg GetActivityParams) (Activity, error)
 	GetJob(ctx context.Context, activityID uuid.UUID) (Job, error)
 	GetParkrunID(ctx context.Context, id uuid.UUID) (string, error)
@@ -27,15 +30,20 @@ type Querier interface {
 	GetStravaToken(ctx context.Context, userID uuid.UUID) (json.RawMessage, error)
 	GetUser(ctx context.Context, id uuid.UUID) (User, error)
 	ListFeed(ctx context.Context, userID uuid.UUID) ([]ListFeedRow, error)
+	ListProviderData(ctx context.Context, activityID uuid.UUID) ([]ProviderDatum, error)
 	ListRules(ctx context.Context, userID uuid.UUID) ([]Rule, error)
+	ListVars(ctx context.Context, userID uuid.UUID) ([]Var, error)
 	SetActivityStatus(ctx context.Context, arg SetActivityStatusParams) error
+	SetActivityTime(ctx context.Context, arg SetActivityTimeParams) error
 	SetParkrunID(ctx context.Context, arg SetParkrunIDParams) error
+	SetRulePriority(ctx context.Context, arg SetRulePriorityParams) error
 	SetStravaToken(ctx context.Context, arg SetStravaTokenParams) error
 	ToggleRule(ctx context.Context, arg ToggleRuleParams) error
 	UpdateRule(ctx context.Context, arg UpdateRuleParams) (Rule, error)
 	UpsertActivity(ctx context.Context, arg UpsertActivityParams) (Activity, error)
 	UpsertJob(ctx context.Context, arg UpsertJobParams) error
 	UpsertProviderData(ctx context.Context, arg UpsertProviderDataParams) error
+	UpsertVar(ctx context.Context, arg UpsertVarParams) error
 	UserIDByAthlete(ctx context.Context, stravaAthleteID int64) (uuid.UUID, error)
 }
 

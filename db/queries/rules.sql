@@ -23,7 +23,7 @@ returning *;
 
 -- name: UpdateRule :one
 update rules
-set name = $3, conditions = $4, actions = $5, updated_at = now()
+set name = $3, conditions = $4, actions = $5, enabled = $6, updated_at = now()
 where id = $1 and user_id = $2
 returning *;
 
@@ -34,3 +34,7 @@ where id = $1 and user_id = $2;
 
 -- name: DeleteRule :exec
 delete from rules where id = $1 and user_id = $2;
+
+-- name: SetRulePriority :exec
+update rules set priority = $3, updated_at = now()
+where id = $1 and user_id = $2;

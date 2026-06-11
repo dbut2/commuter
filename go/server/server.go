@@ -45,8 +45,29 @@ func (s *Server) routes() {
 	r.GET("/auth/strava/callback", s.stravaCallback)
 	r.POST("/logout", s.logout)
 	r.POST("/account/delete", s.deleteAccount)
-	r.GET("/webhook/strava", s.webhookVerify)
-	r.POST("/webhook/strava", s.webhookEvent)
+	r.GET("/strava/webhook", s.webhookVerify)
+	r.POST("/strava/webhook", s.webhookEvent)
+
+	r.GET("/activities", s.activitiesPage)
+	r.POST("/activities/sync", s.activitiesSync)
+	r.GET("/activities/:id", s.activityPage)
+	r.POST("/activities/:id/rerun", s.activityRerun)
+
+	r.GET("/rules", s.rulesPage)
+	r.GET("/rules/edit", s.ruleEditor)
+	r.POST("/rules/save", s.ruleSave)
+	r.POST("/rules/delete", s.ruleDelete)
+	r.POST("/rules/toggle", s.ruleToggle)
+	r.POST("/rules/move", s.ruleMove)
+	r.GET("/rules/rows/cond", s.condRowFragment)
+	r.GET("/rules/rows/act", s.actRowFragment)
+
+	r.GET("/vars", s.varsPage)
+	r.POST("/vars", s.varSave)
+	r.POST("/vars/delete", s.varDelete)
+
+	r.GET("/settings", s.settingsPage)
+	r.POST("/settings/parkrun", s.settingsParkrun)
 }
 
 func (s *Server) fail(c *gin.Context, err error) {
@@ -60,15 +81,6 @@ func (s *Server) user(c *gin.Context) (string, bool) {
 		return "", false
 	}
 	return s.sess.verify(v)
-}
-
-func (s *Server) root(c *gin.Context) {
-	c.Header("Content-Type", "text/html; charset=utf-8")
-	if _, ok := s.user(c); ok {
-		c.String(http.StatusOK, `<!doctype html><title>commuter</title><p>Connected.</p><form method="post" action="/logout"><button>Log out</button></form>`)
-		return
-	}
-	c.String(http.StatusOK, `<!doctype html><title>commuter</title><form method="post" action="/connect"><button>Connect Strava</button></form>`)
 }
 
 func (s *Server) connect(c *gin.Context) {

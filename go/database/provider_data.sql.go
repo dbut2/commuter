@@ -33,6 +33,39 @@ func (q *Queries) GetProviderData(ctx context.Context, arg GetProviderDataParams
 	return i, err
 }
 
+const listProviderData = `-- name: ListProviderData :many
+select activity_id, provider, data, found, fetched_at from provider_data where activity_id = $1 order by provider
+`
+
+func (q *Queries) ListProviderData(ctx context.Context, activityID uuid.UUID) ([]ProviderDatum, error) {
+	rows, err := q.db.QueryContext(ctx, listProviderData, activityID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ProviderDatum
+	for rows.Next() {
+		var i ProviderDatum
+		if err := rows.Scan(
+			&i.ActivityID,
+			&i.Provider,
+			&i.Data,
+			&i.Found,
+			&i.FetchedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const upsertProviderData = `-- name: UpsertProviderData :exec
 insert into provider_data (activity_id, provider, data, found)
 values ($1, $2, $3, $4)
