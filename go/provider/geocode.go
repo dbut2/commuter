@@ -41,7 +41,7 @@ func geocodeField(name, example string, loc func(core.Activity) [2]float64, get 
 		Fetch: func(ctx context.Context, a core.Activity) (any, bool, error) {
 			ll := loc(a)
 			if ll[0] == 0 && ll[1] == 0 {
-				return nil, false, nil // no coordinates: data unavailable
+				return nil, true, nil // no coordinates: data unavailable
 			}
 			p, err := geocodeLookup(ctx, ll[0], ll[1])
 			if err != nil {
