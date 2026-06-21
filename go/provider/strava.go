@@ -50,7 +50,7 @@ var stravaData = []core.Field{
 }
 
 func field[T any](name string, example string, t core.Type[T], get func(a core.Activity) T) core.Field {
-	return core.Field{Name: name, Example: example, Type: t.DataType, Fetch: func(ctx context.Context, a core.Activity) (any, bool, error) {
-		return get(a), true, nil
+	return core.Field{Name: name, Example: example, Type: t.DataType, Fetch: func(ctx context.Context, a core.Activity) core.DataValue {
+		return core.DataSupplied(get(a))
 	}}
 }

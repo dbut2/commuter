@@ -38,20 +38,20 @@ func geocodeField(name, example string, loc func(core.Activity) [2]float64, get 
 		Name:    name,
 		Example: example,
 		Type:    core.TypeString.DataType,
-		Fetch: func(ctx context.Context, a core.Activity) (any, bool, error) {
+		Fetch: func(ctx context.Context, a core.Activity) core.DataValue {
 			ll := loc(a)
 			if ll[0] == 0 && ll[1] == 0 {
-				return nil, false, nil // no coordinates: data unavailable
+				return core.DataEmpty() // no coordinates: data unavailable
 			}
 			p, err := geocodeLookup(ctx, ll[0], ll[1])
 			if err != nil {
-				return nil, false, err
+				return core.DataError(err)
 			}
 			v := get(p)
 			if v == "" {
-				return nil, false, nil
+				return core.DataEmpty()
 			}
-			return v, true, nil
+			return core.DataSupplied(v)
 		},
 	}
 }

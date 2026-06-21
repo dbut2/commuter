@@ -231,11 +231,11 @@ func (p *Processor) cacheProviderData(ctx context.Context, activityID string, ac
 func providerBlob(ctx context.Context, prov core.Provider, act core.Activity) map[string]string {
 	m := map[string]string{}
 	for _, f := range prov.Data() {
-		v, found, err := f.Fetch(ctx, act)
-		if err != nil || !found {
+		dv := f.Fetch(ctx, act)
+		if dv.State != core.DataStateSupplied {
 			continue
 		}
-		m[f.Name] = engine.Format(v)
+		m[f.Name] = engine.Format(dv.Val)
 	}
 	return m
 }

@@ -28,12 +28,12 @@ func (v Vars) Data() []core.Field {
 			Name:    d.Name,
 			Example: d.Value,
 			Type:    core.DataType{Kind: d.Kind},
-			Fetch: func(ctx context.Context, a core.Activity) (any, bool, error) {
+			Fetch: func(ctx context.Context, a core.Activity) core.DataValue {
 				val, err := core.ParseValue(d.Kind, d.Value)
 				if err != nil {
-					return nil, false, fmt.Errorf("var %q: %w", d.Name, err)
+					return core.DataError(fmt.Errorf("var %q: %w", d.Name, err))
 				}
-				return val, true, nil
+				return core.DataSupplied(val)
 			},
 		})
 	}

@@ -92,12 +92,17 @@ func (e *Engine) value(ctx context.Context, c cache, key string, a core.Activity
 	if !ok {
 		return nil, false, fmt.Errorf("engine: unknown field %q", key)
 	}
-	val, found, err := field.Fetch(ctx, a)
-	if err != nil {
+	dv := field.Fetch(ctx, a)
+	switch dv.State {
+	case core.DataStateError:
+		err, _ := dv.Val.(error)
 		return nil, false, err
+	case core.DataStateSupplied:
+		c[key] = fetched{val: dv.Val, found: true}
+		return dv.Val, true, nil
+	default: // pending or unknown: not yet available, don't cache
+		return nil, false, nil
 	}
-	c[key] = fetched{val: val, found: found}
-	return val, found, nil
 }
 
 func (e *Engine) Evaluate(ctx context.Context, rule Rule, a core.Activity) (Result, error) {

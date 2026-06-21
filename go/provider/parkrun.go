@@ -65,12 +65,12 @@ func parkrunField[T any](name string, example string, t core.Type[T], l *lookup,
 		Name:    name,
 		Example: example,
 		Type:    t.DataType,
-		Fetch: func(ctx context.Context, a core.Activity) (any, bool, error) {
+		Fetch: func(ctx context.Context, a core.Activity) core.DataValue {
 			data, found, err := l.get(ctx, a)
 			if err != nil || !found {
-				return nil, false, err
+				return core.DataError(err)
 			}
-			return get(data), true, nil
+			return core.DataSupplied(get(data))
 		},
 	}
 }

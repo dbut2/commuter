@@ -99,8 +99,8 @@ func (fakeExternal) Data() []core.Field {
 	return []core.Field{{
 		Name: "position",
 		Type: core.TypeNumber.DataType,
-		Fetch: func(context.Context, core.Activity) (any, bool, error) {
-			return nil, false, nil // not found yet
+		Fetch: func(context.Context, core.Activity) core.DataValue {
+			return core.DataPending() // not found yet
 		},
 	}}
 }
@@ -128,9 +128,9 @@ func (c countingExternal) Data() []core.Field {
 	return []core.Field{{
 		Name: "position",
 		Type: core.TypeNumber.DataType,
-		Fetch: func(context.Context, core.Activity) (any, bool, error) {
+		Fetch: func(context.Context, core.Activity) core.DataValue {
 			*c.calls++
-			return nil, false, nil
+			return core.DataPending()
 		},
 	}}
 }
@@ -177,8 +177,8 @@ func (foundExternal) Data() []core.Field {
 	return []core.Field{{
 		Name: "position",
 		Type: core.TypeNumber.DataType,
-		Fetch: func(context.Context, core.Activity) (any, bool, error) {
-			return "42", true, nil
+		Fetch: func(context.Context, core.Activity) core.DataValue {
+			return core.DataSupplied("42")
 		},
 	}}
 }
