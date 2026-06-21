@@ -24,7 +24,7 @@ func NewAuth(clientID, clientSecret, baseURL string) *Auth {
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
 		Endpoint:     stravaEndpoint,
-		RedirectURL:  strings.TrimRight(baseURL, "/") + "/auth/strava/callback",
+		RedirectURL:  "https://strava.dbut.dev/commuter",
 
 		Scopes: []string{"read,activity:read_all,activity:write"},
 	}}
