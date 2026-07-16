@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -55,8 +56,9 @@ func (s *Server) catalog(ctx context.Context, userID string) ([]web.Provider, er
 		return nil, err
 	}
 	notes := map[string]string{
-		"vars":    "your variables (Variables page)",
-		"geocode": "reverse-geocoded start/end",
+		"vars":     "your variables (Variables page)",
+		"geocode":  "reverse-geocoded start/end",
+		"segments": "your segments (Settings page)",
 	}
 	out := make([]web.Provider, 0, len(provs))
 	for _, p := range provs {
@@ -517,7 +519,16 @@ func (s *Server) settingsPage(c *gin.Context) {
 		s.fail(c, err)
 		return
 	}
-	s.render(c, http.StatusOK, web.SettingsPage(parkrunID, c.Query("saved") != "", s.initials(ctx, userID)))
+	segments, err := s.repo.Segments(ctx, userID)
+	if err != nil {
+		s.fail(c, err)
+		return
+	}
+	rows := make([]web.SegmentRow, len(segments))
+	for i, seg := range segments {
+		rows[i] = web.SegmentRow{Name: seg.Name, SegmentID: strconv.FormatInt(seg.SegmentID, 10)}
+	}
+	s.render(c, http.StatusOK, web.SettingsPage(parkrunID, rows, c.Query("saved") != "", s.initials(ctx, userID)))
 }
 
 func (s *Server) settingsParkrun(c *gin.Context) {
@@ -541,6 +552,36 @@ func (s *Server) settingsParkrun(c *gin.Context) {
 		return
 	}
 	c.Redirect(http.StatusSeeOther, "/settings?saved=1")
+}
+
+func (s *Server) segmentSave(c *gin.Context) {
+	userID, ok := s.requireUser(c)
+	if !ok {
+		return
+	}
+	name := strings.TrimSpace(c.PostForm("name"))
+	id, err := strconv.ParseInt(strings.TrimSpace(c.PostForm("segment_id")), 10, 64)
+	if !validVarName(name) || err != nil || id <= 0 {
+		c.String(http.StatusBadRequest, "bad segment name or ID")
+		return
+	}
+	if err := s.repo.SetSegment(c.Request.Context(), userID, store.Segment{Name: name, SegmentID: id}); err != nil {
+		s.fail(c, err)
+		return
+	}
+	c.Redirect(http.StatusSeeOther, "/settings?saved=1")
+}
+
+func (s *Server) segmentDelete(c *gin.Context) {
+	userID, ok := s.requireUser(c)
+	if !ok {
+		return
+	}
+	if err := s.repo.DeleteSegment(c.Request.Context(), userID, c.PostForm("name")); err != nil {
+		s.fail(c, err)
+		return
+	}
+	c.Redirect(http.StatusSeeOther, "/settings")
 }
 
 func (s *Server) varsPage(c *gin.Context) {

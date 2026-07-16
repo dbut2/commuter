@@ -263,6 +263,38 @@ func (p *pgRepo) DeleteVar(ctx context.Context, userID, name string) error {
 	return p.q.DeleteVar(ctx, database.DeleteVarParams{UserID: uid, Name: name})
 }
 
+func (p *pgRepo) Segments(ctx context.Context, userID string) ([]Segment, error) {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := p.q.ListSegments(ctx, uid)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Segment, len(rows))
+	for i, r := range rows {
+		out[i] = Segment{Name: r.Name, SegmentID: r.SegmentID}
+	}
+	return out, nil
+}
+
+func (p *pgRepo) SetSegment(ctx context.Context, userID string, s Segment) error {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return err
+	}
+	return p.q.UpsertSegment(ctx, database.UpsertSegmentParams{UserID: uid, Name: s.Name, SegmentID: s.SegmentID})
+}
+
+func (p *pgRepo) DeleteSegment(ctx context.Context, userID, name string) error {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return err
+	}
+	return p.q.DeleteSegment(ctx, database.DeleteSegmentParams{UserID: uid, Name: name})
+}
+
 func (p *pgRepo) ParkrunID(ctx context.Context, userID string) (string, error) {
 	uid, err := uuid.Parse(userID)
 	if err != nil {

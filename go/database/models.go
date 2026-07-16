@@ -55,6 +55,14 @@ type Rule struct {
 	UpdatedAt  time.Time       `json:"updated_at"`
 }
 
+type Segment struct {
+	UserID    uuid.UUID `json:"user_id"`
+	Name      string    `json:"name"`
+	SegmentID int64     `json:"segment_id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 type StravaCredential struct {
 	UserID    uuid.UUID       `json:"user_id"`
 	Token     json.RawMessage `json:"token"`

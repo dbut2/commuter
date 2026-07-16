@@ -2,7 +2,7 @@ package web
 
 import "dbut.dev/x/kit"
 
-templ SettingsPage(parkrunID string, saved bool, initials string) {
+templ SettingsPage(parkrunID string, segments []SegmentRow, saved bool, initials string) {
 	@kit.AppShell("Settings | commuter", nav("", initials)) {
 		@kit.Page(kit.WidthNarrow) {
 			@kit.Title("Settings")
@@ -23,6 +23,47 @@ templ SettingsPage(parkrunID string, saved bool, initials string) {
 						@kit.TextInput(kit.InputOpts{Name: "parkrun_id", Value: parkrunID, Size: kit.SM, W: "40", Mono: true, Placeholder: "A1234567", Pattern: "[Aa]?[0-9]*", Title: "A followed by digits, or empty to disconnect"})
 						@kit.Button("Save", kit.BtnOpts{Tone: kit.Primary, Size: kit.SM})
 					}
+				}
+			}
+			@kit.Card() {
+				@kit.CardBody(kit.BodyOpts{Pad: 5, Gap: 3}) {
+					@kit.SectionLabel("Segments")
+					@kit.Muted() {
+						Strava segments you want to count laps of. Each one adds a
+						@kit.Code("{segments.name_count}")
+						field — the number of efforts on that segment in an activity.
+					}
+					@kit.Table(kit.SM, []kit.Col{{Label: "Name"}, {Label: "Segment ID"}, {}}) {
+						for _, s := range segments {
+							@kit.TR(kit.RowStyle{Hover: true}) {
+								@kit.TD(kit.CellOpts{Mono: true, XS: true, Strong: true}) {
+									{ s.Name }
+								}
+								@kit.TD(kit.CellOpts{Mono: true, XS: true, Faint: true}) {
+									{ s.SegmentID }
+								}
+								@kit.TD(kit.CellOpts{Right: true}) {
+									@kit.Button("Delete", kit.BtnOpts{Ghost: true, Size: kit.XS, Danger: true, Form: "segment-del", Name: "name", Value: s.Name, Confirm: "Delete this segment?"})
+								}
+							}
+						}
+						@kit.TR(kit.RowStyle{Tint: true}) {
+							@kit.TD(kit.CellOpts{}) {
+								@kit.TextInput(kit.InputOpts{Form: "segment-add", Name: "name", Size: kit.XS, W: "24", Mono: true, Placeholder: "albert_park", Required: true, Pattern: "[a-zA-Z0-9_]+", Title: "letters, digits and underscores"})
+							}
+							@kit.TD(kit.CellOpts{}) {
+								@kit.TextInput(kit.InputOpts{Form: "segment-add", Name: "segment_id", Size: kit.XS, W: "32", Mono: true, Placeholder: "6408668", Required: true, Pattern: "[0-9]+", Title: "the number in strava.com/segments/…"})
+							}
+							@kit.TD(kit.CellOpts{Right: true}) {
+								@kit.Button("Add", kit.BtnOpts{Tone: kit.Primary, Size: kit.XS, Form: "segment-add"})
+							}
+						}
+					}
+					@kit.Hint() {
+						The segment ID is the number in the segment's URL, strava.com/segments/6408668. Adding a name that already exists replaces its segment ID.
+					}
+					@kit.Form(kit.FormOpts{ID: "segment-add", Action: "/settings/segments"})
+					@kit.Form(kit.FormOpts{ID: "segment-del", Action: "/settings/segments/delete"})
 				}
 			}
 			@kit.Card() {

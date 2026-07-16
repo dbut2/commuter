@@ -40,7 +40,9 @@ func NewClient(httpClient *http.Client) StravaAPI {
 }
 
 func (c *stravaClient) GetActivity(ctx context.Context, id int64) (core.Activity, error) {
-	a, _, err := c.api.ActivitiesApi.GetActivityById(ctx, id, nil)
+	a, _, err := c.api.ActivitiesApi.GetActivityById(ctx, id, &api.ActivitiesApiGetActivityByIdOpts{
+		IncludeAllEfforts: optional.NewBool(true),
+	})
 	if err != nil {
 		return core.Activity{}, err
 	}
@@ -97,6 +99,13 @@ func toCore(a api.DetailedActivity) core.Activity {
 	} else if a.Type_ != nil {
 		typ = string(*a.Type_)
 	}
+	var efforts []core.SegmentEffort
+	for _, se := range a.SegmentEfforts {
+		if se.Segment == nil {
+			continue
+		}
+		efforts = append(efforts, core.SegmentEffort{SegmentID: se.Segment.Id, Name: se.Segment.Name})
+	}
 	return core.Activity{
 		ID:              int(a.Id),
 		Name:            a.Name,
@@ -110,5 +119,6 @@ func toCore(a api.DetailedActivity) core.Activity {
 		ElapsedDuration: time.Duration(a.ElapsedTime) * time.Second,
 		StartLoc:        loc(a.StartLatlng),
 		EndLoc:          loc(a.EndLatlng),
+		SegmentEfforts:  efforts,
 	}
 }
