@@ -38,6 +38,9 @@ func main() {
 
 	webhookToken := os.Getenv("STRAVA_WEBHOOK_TOKEN")
 	auth := strava.NewAuth(clientID, clientSecret, baseURL)
+	if r := os.Getenv("STRAVA_REDIRECT_URL"); r != "" {
+		auth.SetRedirectURL(r)
+	}
 	proc := processor.New(repo, auth)
 	srv := server.New(repo, auth, proc, []byte(os.Getenv("SESSION_SECRET")), webhookToken)
 	proc.StartPoller(context.Background())
