@@ -19,6 +19,12 @@ type Activity struct {
 	MovingDuration   time.Duration
 	ElapsedDuration  time.Duration
 	StartLoc, EndLoc [2]float64
+	SegmentEfforts   []SegmentEffort
+}
+
+type SegmentEffort struct {
+	SegmentID int64
+	Name      string
 }
 
 type Provider interface {

@@ -65,9 +65,9 @@ func TestPagesRender(t *testing.T) {
 		},
 		"settings": {
 			func(w *strings.Builder) error {
-				return SettingsPage("A123", true, "DB").Render(context.Background(), w)
+				return SettingsPage("A123", []SegmentRow{{Name: "albert_park", SegmentID: "6408668"}}, true, "DB").Render(context.Background(), w)
 			},
-			[]string{"parkrun_id", "alert-success", "Delete account"},
+			[]string{"parkrun_id", "alert-success", "Delete account", "form=\"segment-add\"", "form=\"segment-del\"", "albert_park"},
 		},
 	}
 	for name, p := range pages {

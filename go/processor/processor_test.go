@@ -135,6 +135,36 @@ func TestProcess_NoMatchLeavesUntouched(t *testing.T) {
 	}
 }
 
+func TestProcess_SegmentCountInTemplate(t *testing.T) {
+	proc, repo, sqlDB := testProcessor(t)
+	defer func() { _ = sqlDB.Close() }()
+	ctx := context.Background()
+	uid := seedUser(t, repo, 33333)
+	_ = repo.SetSegment(ctx, uid, store.Segment{Name: "albert_park", SegmentID: 6408668})
+	rule := &engine.Rule{
+		Name:  "Lap counter",
+		Conds: []engine.Cond{{Field: "segments.albert_park_count", Op: "gt", Value: "1"}},
+		Acts:  []engine.Act{{Key: "title", Template: "Albert Park x{segments.albert_park_count}"}},
+	}
+	_ = repo.CreateRule(ctx, uid, rule)
+
+	fake := &fakeStrava{act: core.Activity{
+		ID: 2, Type: "Ride", Name: "ride", Time: time.Now(),
+		SegmentEfforts: []core.SegmentEffort{
+			{SegmentID: 6408668}, {SegmentID: 6408668}, {SegmentID: 6408668}, {SegmentID: 42},
+		},
+	}}
+	proc.stravaFactory = func(context.Context, *oauth2.Token) strava.StravaAPI { return fake }
+
+	_, pending, err := proc.process(ctx, uid, 2)
+	if err != nil || pending {
+		t.Fatalf("err=%v pending=%v", err, pending)
+	}
+	if fake.updated == nil || fake.updated.Name == nil || *fake.updated.Name != "Albert Park x3" {
+		t.Fatalf("strava update = %+v", fake.updated)
+	}
+}
+
 func TestProcess_ParkrunRuleSkippedWhenUnconnected(t *testing.T) {
 	proc, repo, sqlDB := testProcessor(t)
 	defer func() { _ = sqlDB.Close() }()

@@ -27,6 +27,10 @@ type Repo interface {
 	SetVar(ctx context.Context, userID string, v Var) error
 	DeleteVar(ctx context.Context, userID, name string) error
 
+	Segments(ctx context.Context, userID string) ([]Segment, error)
+	SetSegment(ctx context.Context, userID string, s Segment) error
+	DeleteSegment(ctx context.Context, userID, name string) error
+
 	ParkrunID(ctx context.Context, userID string) (string, error)
 	SetParkrunID(ctx context.Context, userID, id string) error
 
@@ -48,6 +52,11 @@ type Var struct {
 	Name  string
 	Type  string
 	Value string
+}
+
+type Segment struct {
+	Name      string
+	SegmentID int64
 }
 
 type RunEntry struct {

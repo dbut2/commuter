@@ -68,6 +68,8 @@ func (s *Server) routes() {
 
 	r.GET("/settings", s.settingsPage)
 	r.POST("/settings/parkrun", s.settingsParkrun)
+	r.POST("/settings/segments", s.segmentSave)
+	r.POST("/settings/segments/delete", s.segmentDelete)
 }
 
 func (s *Server) fail(c *gin.Context, err error) {

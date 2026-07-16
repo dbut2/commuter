@@ -30,6 +30,8 @@ func NewAuth(clientID, clientSecret, baseURL string) *Auth {
 	}}
 }
 
+func (a *Auth) SetRedirectURL(u string) { a.cfg.RedirectURL = u }
+
 func (a *Auth) AuthURL(state string) string {
 	return a.cfg.AuthCodeURL(state, oauth2.SetAuthURLParam("approval_prompt", "auto"))
 }

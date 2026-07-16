@@ -120,6 +120,11 @@ type VarRow struct {
 
 var VarTypes = []string{"string", "number", "coords", "duration", "date", "time", "datetime", "bool"}
 
+type SegmentRow struct {
+	Name      string
+	SegmentID string
+}
+
 func nav(active, initials string) kit.Nav {
 	return kit.Nav{
 		Brand:     "commuter",

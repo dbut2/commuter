@@ -18,6 +18,7 @@ type Querier interface {
 	CountRules(ctx context.Context, userID uuid.UUID) (int64, error)
 	CreateRule(ctx context.Context, arg CreateRuleParams) (Rule, error)
 	DeleteRule(ctx context.Context, arg DeleteRuleParams) error
+	DeleteSegment(ctx context.Context, arg DeleteSegmentParams) error
 	DeleteUser(ctx context.Context, id uuid.UUID) error
 	DeleteVar(ctx context.Context, arg DeleteVarParams) error
 	EnsureUser(ctx context.Context, arg EnsureUserParams) (User, error)
@@ -32,6 +33,7 @@ type Querier interface {
 	ListFeed(ctx context.Context, userID uuid.UUID) ([]ListFeedRow, error)
 	ListProviderData(ctx context.Context, activityID uuid.UUID) ([]ProviderDatum, error)
 	ListRules(ctx context.Context, userID uuid.UUID) ([]Rule, error)
+	ListSegments(ctx context.Context, userID uuid.UUID) ([]Segment, error)
 	ListVars(ctx context.Context, userID uuid.UUID) ([]Var, error)
 	SetActivityStatus(ctx context.Context, arg SetActivityStatusParams) error
 	SetActivityTime(ctx context.Context, arg SetActivityTimeParams) error
@@ -43,6 +45,7 @@ type Querier interface {
 	UpsertActivity(ctx context.Context, arg UpsertActivityParams) (Activity, error)
 	UpsertJob(ctx context.Context, arg UpsertJobParams) error
 	UpsertProviderData(ctx context.Context, arg UpsertProviderDataParams) error
+	UpsertSegment(ctx context.Context, arg UpsertSegmentParams) error
 	UpsertVar(ctx context.Context, arg UpsertVarParams) error
 	UserIDByAthlete(ctx context.Context, stravaAthleteID int64) (uuid.UUID, error)
 }

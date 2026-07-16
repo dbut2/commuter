@@ -96,7 +96,7 @@ templ ActRow(a ActRowVM) {
 		if opt.Bool {
 			@kit.Select(kit.SelectOpts{Name: "act_template", Size: kit.SM, Fit: true, Selected: boolSel(a.Template)}, boolOptions())
 		} else {
-			@kit.TextInput(kit.InputOpts{Name: "act_template", Value: a.Template, Size: kit.SM, Mono: true, TokenTarget: true, Placeholder: "{parkrun.event_name} #{parkrun.event_number}"})
+			@kit.TextInput(kit.InputOpts{Name: "act_template", Value: a.Template, Size: kit.SM, Mono: true, TokenTarget: true, Placeholder: "{parkrun.event_name} #{parkrun.event_number}", Title: `\n inserts a line break in descriptions`})
 		}
 		@kit.RemoveButton(".act-row")
 	}

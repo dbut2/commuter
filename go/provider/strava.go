@@ -45,6 +45,7 @@ var stravaData = []core.Field{
 	field("activity_distance", "10.0", core.TypeNumber, func(a core.Activity) *big.Rat { return new(big.Rat).SetFloat64(a.Distance / 1000) }),
 	field("activity_moving_duration", "25:49", core.TypeDuration, func(a core.Activity) time.Duration { return a.MovingDuration }),
 	field("activity_elapsed_duration", "25:51", core.TypeDuration, func(a core.Activity) time.Duration { return a.ElapsedDuration }),
+	field("activity_stopped_duration", "0:02", core.TypeDuration, func(a core.Activity) time.Duration { return a.ElapsedDuration - a.MovingDuration }),
 	field("activity_start_location", "[0.0, 0.0]", core.TypeCoords, func(a core.Activity) [2]float64 { return a.StartLoc }),
 	field("activity_end_location", "[0.0, 0.0]", core.TypeCoords, func(a core.Activity) [2]float64 { return a.EndLoc }),
 }

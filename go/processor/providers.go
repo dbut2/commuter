@@ -22,6 +22,18 @@ func (p *Processor) userProviders(ctx context.Context, userID string) ([]core.Pr
 		providers = append(providers, provider.Parkrun{ParkrunID: parseParkrunID(parkrunID)})
 	}
 
+	segments, err := p.repo.Segments(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if len(segments) > 0 {
+		defs := make([]provider.SegmentDef, len(segments))
+		for i, s := range segments {
+			defs[i] = provider.SegmentDef{Name: s.Name, SegmentID: s.SegmentID}
+		}
+		providers = append(providers, provider.Segments{Defs: defs})
+	}
+
 	vars, err := p.repo.Vars(ctx, userID)
 	if err != nil {
 		return nil, err
