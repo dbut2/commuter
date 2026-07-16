@@ -192,7 +192,7 @@ func (e *Engine) apply(ctx context.Context, c cache, rule Rule, a *core.Activity
 			if act.Key == "title" {
 				a.Name = s
 			} else {
-				a.Description = s
+				a.Description = strings.ReplaceAll(s, `\n`, "\n")
 			}
 		}
 	}

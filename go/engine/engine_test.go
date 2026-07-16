@@ -105,6 +105,23 @@ func (fakeExternal) Data() []core.Field {
 	}}
 }
 
+func TestApply_DescriptionNewlineEscape(t *testing.T) {
+	r := Rule{Acts: []Act{
+		{Key: "title", Template: `one\ntwo`},
+		{Key: "desc", Template: `laps: 3\nstopped: {strava.activity_moving_duration}`},
+	}}
+	a := testActivity()
+	if _, err := eng().Apply(context.Background(), r, &a); err != nil {
+		t.Fatal(err)
+	}
+	if a.Description != "laps: 3\nstopped: 50:00" {
+		t.Fatalf("description = %q", a.Description)
+	}
+	if a.Name != `one\ntwo` {
+		t.Fatalf("title should keep literal backslash-n, got %q", a.Name)
+	}
+}
+
 func TestApply_PendingWhenExternalMissing(t *testing.T) {
 	e := New(provider.Strava{}, fakeExternal{})
 	a := testActivity()
