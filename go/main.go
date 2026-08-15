@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 
 	"dbut.dev/commuter/go/processor"
 	"dbut.dev/commuter/go/server"
@@ -44,15 +43,6 @@ func main() {
 	proc := processor.New(repo, auth)
 	srv := server.New(repo, auth, proc, []byte(os.Getenv("SESSION_SECRET")), webhookToken)
 	proc.StartPoller(context.Background())
-
-	if webhookToken != "" && strings.HasPrefix(baseURL, "https://") {
-		go func() {
-			cb := strings.TrimRight(baseURL, "/") + "/strava/webhook"
-			if err := auth.EnsureSubscription(context.Background(), cb, webhookToken); err != nil {
-				log.Printf("commuter: webhook subscription: %v", err)
-			}
-		}()
-	}
 
 	log.Printf("commuter listening on :%s", port)
 	if err := http.ListenAndServe(":"+port, srv); err != nil {
