@@ -43,3 +43,8 @@ jobs:
           tags: |
             ghcr.io/dbut2/commuter:latest
             ghcr.io/dbut2/commuter:sha-${{ github.sha }}
+
+      - name: Deploy to Dokploy
+        run: curl -fsS -X POST "$DOKPLOY_DEPLOY_WEBHOOK"
+        env:
+          DOKPLOY_DEPLOY_WEBHOOK: ${{ secrets.DOKPLOY_DEPLOY_WEBHOOK }}
