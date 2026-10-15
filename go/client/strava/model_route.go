@@ -34,9 +34,9 @@ type Route struct {
 	Starred bool `json:"starred,omitempty"`
 	// An epoch timestamp of when the route was created
 	Timestamp int32 `json:"timestamp,omitempty"`
-	// This route's type (1 for ride, 2 for runs)
+	// This route's type (1 = Ride, 2 = Run, 3 = Walk, 4 = Hike, 5 = Trail Run, 6 = Gravel Ride, 7 = Mountain Bike Ride)
 	Type_ int32 `json:"type,omitempty"`
-	// This route's sub-type (1 for road, 2 for mountain bike, 3 for cross, 4 for trail, 5 for mixed)
+	// This route's sub-type (1 = Road, 2 = MTB, 3 = Gravel, 4 = Trail, 5 = Mixed)
 	SubType int32 `json:"sub_type,omitempty"`
 	// The time at which the route was created
 	CreatedAt time.Time `json:"created_at,omitempty"`
