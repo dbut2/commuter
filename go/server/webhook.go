@@ -51,8 +51,6 @@ func (s *Server) webhookEvent(c *gin.Context) {
 		}
 		if err := s.proc.Enqueue(ctx, userID, ev.ObjectID); err != nil {
 			log.Printf("commuter: webhook enqueue: %v", err)
-			return
 		}
-		s.proc.KickPoll()
 	}()
 }

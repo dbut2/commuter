@@ -38,11 +38,14 @@ func testProcessor(t *testing.T) (*Processor, store.Repo, *sql.DB) {
 	if err != nil {
 		t.Fatalf("connect: %v", err)
 	}
-	if _, err := sqlDB.Exec("truncate users, rules, activities, provider_data, jobs, strava_credentials cascade"); err != nil {
+	if _, err := sqlDB.Exec("truncate users, rules, activities, provider_data, river_job, strava_credentials cascade"); err != nil {
 		t.Fatalf("truncate: %v", err)
 	}
 	repo := store.NewPGRepo(sqlDB)
-	proc := New(repo, strava.NewAuth("id", "secret", "http://localhost"))
+	proc, err := New(sqlDB, repo, strava.NewAuth("id", "secret", "http://localhost"))
+	if err != nil {
+		t.Fatalf("processor: %v", err)
+	}
 	return proc, repo, sqlDB
 }
 

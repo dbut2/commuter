@@ -19,7 +19,7 @@ templ ActivityDetailPage(a ActivityPage, initials string) {
 						@kit.LinkButton("View on Strava ↗", stravaURL(a.StravaID), kit.BtnOpts{Ghost: true, Size: kit.SM, NewTab: true})
 						@kit.FormButton("/activities/"+a.ID+"/rerun", "Re-run rules", kit.BtnOpts{Tone: kit.Primary, Size: kit.SM, Outline: true})
 					}
-					if a.JobStatus == "queued" || a.JobStatus == "waiting" {
+					if a.JobStatus == "queued" {
 						@kit.Alert(kit.Warning) {
 							@kit.Icon("clock", 18)
 							@kit.Span() {

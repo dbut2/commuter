@@ -2,11 +2,12 @@ package processor
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
-	"sync"
 
+	"github.com/riverqueue/river"
 	"golang.org/x/oauth2"
 
 	"dbut.dev/commuter/go/core"
@@ -20,15 +21,20 @@ type Processor struct {
 	repo          store.Repo
 	auth          *strava.Auth
 	stravaFactory func(ctx context.Context, tok *oauth2.Token, save func(*oauth2.Token) error) strava.StravaAPI
-	pollMu        sync.Mutex
+	river         *river.Client[*sql.Tx]
 }
 
-func New(repo store.Repo, auth *strava.Auth) *Processor {
+func New(db *sql.DB, repo store.Repo, auth *strava.Auth) (*Processor, error) {
 	p := &Processor{repo: repo, auth: auth}
 	p.stravaFactory = func(ctx context.Context, tok *oauth2.Token, save func(*oauth2.Token) error) strava.StravaAPI {
 		return strava.NewClient(auth.HTTPClient(ctx, tok, save))
 	}
-	return p
+	client, err := newRiver(db, p)
+	if err != nil {
+		return nil, err
+	}
+	p.river = client
+	return p, nil
 }
 
 func (p *Processor) stravaAPIFor(ctx context.Context, userID string) (strava.StravaAPI, error) {
@@ -77,9 +83,6 @@ func (p *Processor) Sync(ctx context.Context, userID string) (int, error) {
 			return 0, err
 		}
 		added++
-	}
-	if added > 0 {
-		p.KickPoll()
 	}
 	return added, nil
 }

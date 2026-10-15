@@ -433,12 +433,11 @@ func (p *pgRepo) ActivityDetail(ctx context.Context, userID, activityID string) 
 		info.Providers = append(info.Providers, pb)
 	}
 
-	j, err := p.q.GetJob(ctx, aid)
-	if err == nil {
-		info.Job = &JobInfo{Status: j.Status, NextRun: j.NextRun, ExpiresAt: j.ExpiresAt, LastError: j.LastError.String}
-	} else if !errors.Is(err, sql.ErrNoRows) {
+	jobs, err := p.latestJobs(ctx, []int64{a.StravaID})
+	if err != nil {
 		return nil, err
 	}
+	info.Job = jobs[a.StravaID]
 	return info, nil
 }
 
@@ -450,42 +449,6 @@ func (p *pgRepo) SetProviderData(ctx context.Context, activityID, provider strin
 	return p.q.UpsertProviderData(ctx, database.UpsertProviderDataParams{
 		ActivityID: aid, Provider: provider, Data: data, Found: found,
 	})
-}
-
-func (p *pgRepo) UpsertJob(ctx context.Context, activityID string, nextRun, expiresAt time.Time) error {
-	aid, err := uuid.Parse(activityID)
-	if err != nil {
-		return err
-	}
-	return p.q.UpsertJob(ctx, database.UpsertJobParams{
-		ActivityID: aid, NextRun: nextRun, ExpiresAt: expiresAt,
-	})
-}
-
-func (p *pgRepo) CompleteJob(ctx context.Context, activityID, status, lastErr string) error {
-	aid, err := uuid.Parse(activityID)
-	if err != nil {
-		return err
-	}
-	return p.q.CompleteJob(ctx, database.CompleteJobParams{
-		ActivityID: aid, Status: status,
-		LastError: sql.NullString{String: lastErr, Valid: lastErr != ""},
-	})
-}
-
-func (p *pgRepo) ClaimJobs(ctx context.Context, limit int) ([]ClaimedJob, error) {
-	rows, err := p.q.ClaimJobs(ctx, int32(limit))
-	if err != nil {
-		return nil, err
-	}
-	out := make([]ClaimedJob, len(rows))
-	for i, r := range rows {
-		out[i] = ClaimedJob{
-			ActivityID: r.ActivityID.String(), UserID: r.UserID.String(),
-			StravaID: r.StravaID, ExpiresAt: r.ExpiresAt,
-		}
-	}
-	return out, nil
 }
 
 func (p *pgRepo) SetActivityStatus(ctx context.Context, activityID, status string) error {
@@ -505,6 +468,14 @@ func (p *pgRepo) Feed(ctx context.Context, userID string) ([]FeedItem, error) {
 	if err != nil {
 		return nil, err
 	}
+	ids := make([]int64, len(rows))
+	for i, r := range rows {
+		ids[i] = r.StravaID
+	}
+	jobs, err := p.latestJobs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
 	out := make([]FeedItem, 0, len(rows))
 	for _, r := range rows {
 		item := FeedItem{
@@ -517,17 +488,38 @@ func (p *pgRepo) Feed(ctx context.Context, userID string) ([]FeedItem, error) {
 		if r.StravaData.Valid {
 			_ = json.Unmarshal(r.StravaData.RawMessage, &item.Strava)
 		}
-		if r.JobStatus.Valid {
-			item.Job = &JobInfo{
-				Status:    r.JobStatus.String,
-				NextRun:   r.JobNextRun.Time,
-				ExpiresAt: r.JobExpiresAt.Time,
-				LastError: r.JobLastError.String,
-			}
-		}
+		item.Job = jobs[r.StravaID]
 		out = append(out, item)
 	}
 	return out, nil
+}
+
+func (p *pgRepo) latestJobs(ctx context.Context, stravaIDs []int64) (map[int64]*JobInfo, error) {
+	rows, err := p.q.LatestActivityJobs(ctx, stravaIDs)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[int64]*JobInfo, len(rows))
+	for _, r := range rows {
+		out[r.StravaID] = &JobInfo{
+			Status:    jobStatus(r.State),
+			NextRun:   r.ScheduledAt,
+			ExpiresAt: r.ExpiresAt,
+			LastError: r.LastError,
+		}
+	}
+	return out, nil
+}
+
+func jobStatus(s database.RiverJobState) string {
+	switch s {
+	case database.RiverJobStateCompleted:
+		return "completed"
+	case database.RiverJobStateDiscarded, database.RiverJobStateCancelled:
+		return "failed"
+	default:
+		return "queued"
+	}
 }
 
 func toRule(row database.Rule) (*engine.Rule, error) {

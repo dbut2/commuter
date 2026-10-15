@@ -24,16 +24,22 @@ update activities set activity_time = $2, updated_at = now() where id = $1;
 -- name: ListFeed :many
 select
     a.*,
-    sd.data as strava_data,
-    j.status as job_status,
-    j.next_run as job_next_run,
-    j.expires_at as job_expires_at,
-    j.last_error as job_last_error
+    sd.data as strava_data
 from activities a
 left join provider_data sd on sd.activity_id = a.id and sd.provider = 'strava'
-left join jobs j on j.activity_id = a.id
 where a.user_id = $1
 order by coalesce(a.activity_time, a.created_at) desc;
+
+-- name: LatestActivityJobs :many
+select distinct on ((args->>'strava_id')::bigint)
+    (args->>'strava_id')::bigint as strava_id,
+    state,
+    scheduled_at,
+    (args->>'expires_at')::timestamptz as expires_at,
+    coalesce(errors[array_length(errors, 1)]->>'error', '')::text as last_error
+from river_job
+where kind = 'process_activity' and (args->>'strava_id')::bigint = any(sqlc.arg(strava_ids)::bigint[])
+order by (args->>'strava_id')::bigint, id desc;
 
 -- name: SetActivityStatus :exec
 update activities set status = $2, updated_at = now() where id = $1;

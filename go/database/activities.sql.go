@@ -90,17 +90,61 @@ func (q *Queries) GetActivity(ctx context.Context, arg GetActivityParams) (Activ
 	return i, err
 }
 
+const latestActivityJobs = `-- name: LatestActivityJobs :many
+select distinct on ((args->>'strava_id')::bigint)
+    (args->>'strava_id')::bigint as strava_id,
+    state,
+    scheduled_at,
+    (args->>'expires_at')::timestamptz as expires_at,
+    coalesce(errors[array_length(errors, 1)]->>'error', '')::text as last_error
+from river_job
+where kind = 'process_activity' and (args->>'strava_id')::bigint = any($1::bigint[])
+order by (args->>'strava_id')::bigint, id desc
+`
+
+type LatestActivityJobsRow struct {
+	StravaID    int64         `json:"strava_id"`
+	State       RiverJobState `json:"state"`
+	ScheduledAt time.Time     `json:"scheduled_at"`
+	ExpiresAt   time.Time     `json:"expires_at"`
+	LastError   string        `json:"last_error"`
+}
+
+func (q *Queries) LatestActivityJobs(ctx context.Context, stravaIds []int64) ([]LatestActivityJobsRow, error) {
+	rows, err := q.db.QueryContext(ctx, latestActivityJobs, pq.Array(stravaIds))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []LatestActivityJobsRow
+	for rows.Next() {
+		var i LatestActivityJobsRow
+		if err := rows.Scan(
+			&i.StravaID,
+			&i.State,
+			&i.ScheduledAt,
+			&i.ExpiresAt,
+			&i.LastError,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listFeed = `-- name: ListFeed :many
 select
     a.id, a.user_id, a.strava_id, a.status, a.applied_rules, a.run_log, a.activity_time, a.created_at, a.updated_at,
-    sd.data as strava_data,
-    j.status as job_status,
-    j.next_run as job_next_run,
-    j.expires_at as job_expires_at,
-    j.last_error as job_last_error
+    sd.data as strava_data
 from activities a
 left join provider_data sd on sd.activity_id = a.id and sd.provider = 'strava'
-left join jobs j on j.activity_id = a.id
 where a.user_id = $1
 order by coalesce(a.activity_time, a.created_at) desc
 `
@@ -116,10 +160,6 @@ type ListFeedRow struct {
 	CreatedAt    time.Time             `json:"created_at"`
 	UpdatedAt    time.Time             `json:"updated_at"`
 	StravaData   pqtype.NullRawMessage `json:"strava_data"`
-	JobStatus    sql.NullString        `json:"job_status"`
-	JobNextRun   sql.NullTime          `json:"job_next_run"`
-	JobExpiresAt sql.NullTime          `json:"job_expires_at"`
-	JobLastError sql.NullString        `json:"job_last_error"`
 }
 
 func (q *Queries) ListFeed(ctx context.Context, userID uuid.UUID) ([]ListFeedRow, error) {
@@ -142,10 +182,6 @@ func (q *Queries) ListFeed(ctx context.Context, userID uuid.UUID) ([]ListFeedRow
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.StravaData,
-			&i.JobStatus,
-			&i.JobNextRun,
-			&i.JobExpiresAt,
-			&i.JobLastError,
 		); err != nil {
 			return nil, err
 		}
