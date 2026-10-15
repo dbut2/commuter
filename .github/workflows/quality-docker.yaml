@@ -1,0 +1,22 @@
+# DO NOT EDIT. Synced from dbut2/x
+# https://github.com/dbut2/x/blob/main/workflow-sync/workflows/quality-docker.yaml
+
+name: Docker Compose
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  merge_group:
+
+permissions:
+  contents: read
+
+jobs:
+  compose:
+    name: Docker Compose
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker compose build
