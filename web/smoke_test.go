@@ -17,7 +17,7 @@ func TestPagesRender(t *testing.T) {
 	}{
 		"login": {
 			func(w *strings.Builder) error { return LoginPage().Render(context.Background(), w) },
-			[]string{"Connect Strava", "daisyui", "data-theme=\"light\""},
+			[]string{"Connect with Strava", "Powered by Strava", "daisyui", "data-theme=\"light\""},
 		},
 		"dashboard": {
 			func(w *strings.Builder) error {
