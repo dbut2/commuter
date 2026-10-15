@@ -28,7 +28,7 @@ type SegmentsApiService service
 
 /*
 SegmentsApiService Explore segments
-Returns the top 10 segments matching a specified query.
+Returns the top 10 segments matching a specified query. Available only to Extended Access Tier apps with granted permission.
  * @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
  * @param bounds The latitude and longitude for two points describing a rectangular boundary for the search: [southwest corner latitutde, southwest corner longitude, northeast corner latitude, northeast corner longitude]
  * @param optional nil or *SegmentsApiExploreSegmentsOpts - Optional Parameters:
