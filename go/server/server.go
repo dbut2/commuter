@@ -10,6 +10,7 @@ import (
 	"dbut.dev/commuter/go/processor"
 	"dbut.dev/commuter/go/store"
 	"dbut.dev/commuter/go/strava"
+	"dbut.dev/commuter/web"
 )
 
 type Server struct {
@@ -40,6 +41,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) { s.engine.Se
 
 func (s *Server) routes() {
 	r := s.engine
+	r.StaticFS("/static", http.FS(web.Static))
 	r.GET("/", s.root)
 	r.POST("/connect", s.connect)
 	r.GET("/auth/strava/callback", s.stravaCallback)
