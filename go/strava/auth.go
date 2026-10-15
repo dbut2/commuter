@@ -40,8 +40,25 @@ func (a *Auth) Exchange(ctx context.Context, code string) (*oauth2.Token, error)
 	return a.cfg.Exchange(ctx, code)
 }
 
-func (a *Auth) HTTPClient(ctx context.Context, tok *oauth2.Token) *http.Client {
-	return a.cfg.Client(ctx, tok)
+func (a *Auth) HTTPClient(ctx context.Context, tok *oauth2.Token, save func(*oauth2.Token) error) *http.Client {
+	src := &savingSource{src: a.cfg.TokenSource(ctx, tok), save: save}
+	return oauth2.NewClient(ctx, oauth2.ReuseTokenSource(tok, src))
+}
+
+type savingSource struct {
+	src  oauth2.TokenSource
+	save func(*oauth2.Token) error
+}
+
+func (s *savingSource) Token() (*oauth2.Token, error) {
+	tok, err := s.src.Token()
+	if err != nil {
+		return nil, err
+	}
+	if err := s.save(tok); err != nil {
+		return nil, err
+	}
+	return tok, nil
 }
 
 type stravaAthlete struct {

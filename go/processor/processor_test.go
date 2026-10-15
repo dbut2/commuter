@@ -75,7 +75,7 @@ func TestProcess_AppliesRuleAndPersists(t *testing.T) {
 	}
 
 	fake := &fakeStrava{act: core.Activity{ID: 999, Type: "Run", Name: "old", Time: time.Now()}}
-	proc.stravaFactory = func(context.Context, *oauth2.Token) strava.StravaAPI { return fake }
+	proc.stravaFactory = func(context.Context, *oauth2.Token, func(*oauth2.Token) error) strava.StravaAPI { return fake }
 
 	_, pending, err := proc.process(ctx, uid, 999)
 	if err != nil {
@@ -120,7 +120,7 @@ func TestProcess_NoMatchLeavesUntouched(t *testing.T) {
 	_ = repo.CreateRule(ctx, uid, rule)
 
 	fake := &fakeStrava{act: core.Activity{ID: 1, Type: "Run", Name: "run", Time: time.Now()}}
-	proc.stravaFactory = func(context.Context, *oauth2.Token) strava.StravaAPI { return fake }
+	proc.stravaFactory = func(context.Context, *oauth2.Token, func(*oauth2.Token) error) strava.StravaAPI { return fake }
 
 	_, pending, err := proc.process(ctx, uid, 1)
 	if err != nil || pending {
@@ -154,7 +154,7 @@ func TestProcess_SegmentCountInTemplate(t *testing.T) {
 			{SegmentID: 6408668}, {SegmentID: 6408668}, {SegmentID: 6408668}, {SegmentID: 42},
 		},
 	}}
-	proc.stravaFactory = func(context.Context, *oauth2.Token) strava.StravaAPI { return fake }
+	proc.stravaFactory = func(context.Context, *oauth2.Token, func(*oauth2.Token) error) strava.StravaAPI { return fake }
 
 	_, pending, err := proc.process(ctx, uid, 2)
 	if err != nil || pending {
@@ -178,7 +178,7 @@ func TestProcess_ParkrunRuleSkippedWhenUnconnected(t *testing.T) {
 	_ = repo.CreateRule(ctx, uid, rule)
 
 	fake := &fakeStrava{act: core.Activity{ID: 7, Type: "Run", Name: "run", Time: time.Now()}}
-	proc.stravaFactory = func(context.Context, *oauth2.Token) strava.StravaAPI { return fake }
+	proc.stravaFactory = func(context.Context, *oauth2.Token, func(*oauth2.Token) error) strava.StravaAPI { return fake }
 
 	_, pending, err := proc.process(ctx, uid, 7)
 	if err != nil {
@@ -206,7 +206,7 @@ func TestSync_EnqueuesOnlyNewActivities(t *testing.T) {
 		t.Fatal(err)
 	}
 	fake := &fakeStrava{ids: []int64{101, 102, 103}}
-	proc.stravaFactory = func(context.Context, *oauth2.Token) strava.StravaAPI { return fake }
+	proc.stravaFactory = func(context.Context, *oauth2.Token, func(*oauth2.Token) error) strava.StravaAPI { return fake }
 
 	added, err := proc.Sync(ctx, uid)
 	if err != nil {
@@ -253,7 +253,7 @@ func TestRefreshStravaData_UpdatesCacheWithoutRerunningRules(t *testing.T) {
 	}
 
 	fake := &fakeStrava{act: core.Activity{ID: 999, Type: "Run", Name: "old", Time: time.Now()}}
-	proc.stravaFactory = func(context.Context, *oauth2.Token) strava.StravaAPI { return fake }
+	proc.stravaFactory = func(context.Context, *oauth2.Token, func(*oauth2.Token) error) strava.StravaAPI { return fake }
 	if _, _, err := proc.process(ctx, uid, 999); err != nil {
 		t.Fatal(err)
 	}
@@ -308,7 +308,7 @@ func TestProcess_NonMatchingActivityNotPending(t *testing.T) {
 	_ = repo.CreateRule(ctx, uid, rule)
 
 	fake := &fakeStrava{act: core.Activity{ID: 8, Type: "Ride", Name: "ride", Time: time.Now()}}
-	proc.stravaFactory = func(context.Context, *oauth2.Token) strava.StravaAPI { return fake }
+	proc.stravaFactory = func(context.Context, *oauth2.Token, func(*oauth2.Token) error) strava.StravaAPI { return fake }
 
 	_, pending, err := proc.process(ctx, uid, 8)
 	if err != nil {

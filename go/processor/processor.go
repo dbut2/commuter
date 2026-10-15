@@ -19,14 +19,14 @@ import (
 type Processor struct {
 	repo          store.Repo
 	auth          *strava.Auth
-	stravaFactory func(ctx context.Context, tok *oauth2.Token) strava.StravaAPI
+	stravaFactory func(ctx context.Context, tok *oauth2.Token, save func(*oauth2.Token) error) strava.StravaAPI
 	pollMu        sync.Mutex
 }
 
 func New(repo store.Repo, auth *strava.Auth) *Processor {
 	p := &Processor{repo: repo, auth: auth}
-	p.stravaFactory = func(ctx context.Context, tok *oauth2.Token) strava.StravaAPI {
-		return strava.NewClient(auth.HTTPClient(ctx, tok))
+	p.stravaFactory = func(ctx context.Context, tok *oauth2.Token, save func(*oauth2.Token) error) strava.StravaAPI {
+		return strava.NewClient(auth.HTTPClient(ctx, tok, save))
 	}
 	return p
 }
@@ -43,7 +43,14 @@ func (p *Processor) stravaAPIFor(ctx context.Context, userID string) (strava.Str
 	if err := json.Unmarshal(raw, &tok); err != nil {
 		return nil, err
 	}
-	return p.stravaFactory(ctx, &tok), nil
+	save := func(t *oauth2.Token) error {
+		b, err := json.Marshal(t)
+		if err != nil {
+			return err
+		}
+		return p.repo.SetStravaToken(ctx, userID, b)
+	}
+	return p.stravaFactory(ctx, &tok, save), nil
 }
 
 const syncBatch = 30
