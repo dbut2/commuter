@@ -42,7 +42,7 @@ templ VarsPage(vars []VarRow, initials string) {
 							@kit.Select(kit.SelectOpts{Form: "var-add", Name: "type", Size: kit.XS, Mono: true, Selected: "coords"}, typeOptions())
 						}
 						@kit.TD(kit.CellOpts{Colspan: 2}) {
-							@kit.TextInput(kit.InputOpts{Form: "var-add", Name: "value", Size: kit.XS, W: "full", Mono: true, Placeholder: "-37.68, 144.58", Required: true})
+							@kit.TextInput(kit.InputOpts{Form: "var-add", Name: "value", Size: kit.XS, W: "full", Mono: true, Placeholder: "-37.84, 144.97", Required: true})
 						}
 						@kit.TD(kit.CellOpts{Right: true}) {
 							@kit.Button("Add", kit.BtnOpts{Tone: kit.Primary, Size: kit.XS, Form: "var-add"})
