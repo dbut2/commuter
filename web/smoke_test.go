@@ -57,6 +57,14 @@ func TestPagesRender(t *testing.T) {
 			},
 			[]string{"strava.com/activities/42", "alert-error", "commute", "badge-error"},
 		},
+		"activity retrying": {
+			func(w *strings.Builder) error {
+				return ActivityDetailPage(ActivityPage{
+					ID: "a1", StravaID: 42, Name: "Ride", Status: "unprocessed", JobStatus: "retrying", JobError: "strava 502", NextRun: "10:15",
+				}, "DB").Render(context.Background(), w)
+			},
+			[]string{"alert-warning", "Attempt failed: strava 502. Retrying at 10:15.", "Retry now"},
+		},
 		"vars": {
 			func(w *strings.Builder) error {
 				return VarsPage([]VarRow{{Name: "home", Type: "coords", Value: "1,2", Used: "1 rule"}}, "DB").Render(context.Background(), w)

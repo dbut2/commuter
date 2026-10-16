@@ -30,6 +30,15 @@ templ ActivityDetailPage(a ActivityPage, initials string) {
 							@kit.FormButton("/activities/"+a.ID+"/rerun", "Poll now", kit.BtnOpts{Size: kit.XS})
 						}
 					}
+					if a.JobStatus == "retrying" {
+						@kit.Alert(kit.Warning) {
+							@kit.Icon("clock", 18)
+							@kit.Span() {
+								Attempt failed: { a.JobError }. Retrying at { a.NextRun }.
+							}
+							@kit.FormButton("/activities/"+a.ID+"/rerun", "Retry now", kit.BtnOpts{Size: kit.XS})
+						}
+					}
 					if a.JobStatus == "failed" {
 						@kit.Alert(kit.Error) {
 							@kit.Span() {

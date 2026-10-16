@@ -517,6 +517,8 @@ func jobStatus(s database.RiverJobState) string {
 		return "completed"
 	case database.RiverJobStateDiscarded, database.RiverJobStateCancelled:
 		return "failed"
+	case database.RiverJobStateRetryable:
+		return "retrying"
 	default:
 		return "queued"
 	}
