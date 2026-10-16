@@ -103,7 +103,7 @@ func TestQueue_ProcessesEnqueuedActivity(t *testing.T) {
 	if err := proc.Start(ctx); err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = proc.river.Stop(context.Background()) }()
+	defer func() { _ = proc.Stop(context.Background()) }()
 	if err := proc.Enqueue(ctx, uid, 601); err != nil {
 		t.Fatal(err)
 	}
