@@ -65,6 +65,10 @@ func TestPagesRender(t *testing.T) {
 			},
 			[]string{"alert-warning", "Attempt failed: strava 502. Retrying at 10:15.", "Retry now"},
 		},
+		"privacy": {
+			func(w *strings.Builder) error { return PrivacyPage().Render(context.Background(), w) },
+			[]string{"What&#39;s stored", "where they start and finish", "Lookup services", "revoking access"},
+		},
 		"vars": {
 			func(w *strings.Builder) error {
 				return VarsPage([]VarRow{{Name: "home", Type: "coords", Value: "1,2", Used: "1 rule"}}, "DB").Render(context.Background(), w)

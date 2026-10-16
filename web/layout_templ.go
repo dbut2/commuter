@@ -131,6 +131,10 @@ func LoginPage() templ.Component {
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
+						templ_7745c5c3_Err = kit.LinkButton("Privacy", "/privacy", kit.BtnOpts{Ghost: true, Size: kit.XS}).Render(ctx, templ_7745c5c3_Buffer)
+						if templ_7745c5c3_Err != nil {
+							return templ_7745c5c3_Err
+						}
 						return nil
 					})
 					templ_7745c5c3_Err = kit.CardBody(kit.BodyOpts{Gap: 3, Center: true}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var5), templ_7745c5c3_Buffer)

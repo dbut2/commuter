@@ -53,6 +53,7 @@ func (s *Server) routes() {
 	r.StaticFS("/static", http.FS(web.Static))
 	r.GET("/health", s.health)
 	r.GET("/", s.root)
+	r.GET("/privacy", s.privacy)
 	r.POST("/connect", s.connect)
 	r.GET("/auth/strava/callback", s.stravaCallback)
 	r.POST("/logout", s.logout)
@@ -91,6 +92,8 @@ func (s *Server) health(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
+
+func (s *Server) privacy(c *gin.Context) { s.render(c, http.StatusOK, web.PrivacyPage()) }
 
 func (s *Server) fail(c *gin.Context, err error) {
 	log.Printf("commuter: %v", err)

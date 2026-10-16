@@ -14,6 +14,9 @@ select coalesce(parkrun_id, '') from users where id = $1;
 -- name: SetParkrunID :exec
 update users set parkrun_id = $2, updated_at = now() where id = $1;
 
+-- name: DeleteUserJobs :exec
+delete from river_job where args->>'user_id' = sqlc.arg(user_id)::text;
+
 -- name: DeleteUser :exec
 delete from users where id = $1;
 
