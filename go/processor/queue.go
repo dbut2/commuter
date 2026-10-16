@@ -3,11 +3,14 @@ package processor
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverdatabasesql"
 	"github.com/riverqueue/river/rivertype"
+
+	"dbut.dev/commuter/go/strava"
 )
 
 const (
@@ -57,7 +60,7 @@ type activityWorker struct {
 func (w *activityWorker) Work(ctx context.Context, job *river.Job[ProcessActivityArgs]) error {
 	activityID, pending, err := w.process(ctx, job.Args.UserID, job.Args.StravaID)
 	if err != nil {
-		return err
+		return snoozeIfRateLimited(err)
 	}
 	if !pending {
 		return nil
@@ -75,6 +78,14 @@ type refreshWorker struct {
 
 func (w *refreshWorker) Work(ctx context.Context, job *river.Job[RefreshActivityArgs]) error {
 	_, err := w.p.RefreshStravaData(ctx, job.Args.UserID, job.Args.StravaID)
+	return snoozeIfRateLimited(err)
+}
+
+func snoozeIfRateLimited(err error) error {
+	var rl *strava.RateLimitError
+	if errors.As(err, &rl) {
+		return river.JobSnooze(max(time.Until(rl.ResetAt), time.Minute))
+	}
 	return err
 }
 
