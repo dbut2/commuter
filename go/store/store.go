@@ -43,9 +43,6 @@ type Repo interface {
 	Feed(ctx context.Context, userID string) ([]FeedItem, error)
 	ActivityDetail(ctx context.Context, userID, activityID string) (*ActivityInfo, error)
 	SetActivityStatus(ctx context.Context, activityID, status string) error
-	UpsertJob(ctx context.Context, activityID string, nextRun, expiresAt time.Time) error
-	CompleteJob(ctx context.Context, activityID, status, lastErr string) error
-	ClaimJobs(ctx context.Context, limit int) ([]ClaimedJob, error)
 }
 
 type Var struct {
@@ -98,11 +95,4 @@ type JobInfo struct {
 	NextRun   time.Time
 	ExpiresAt time.Time
 	LastError string
-}
-
-type ClaimedJob struct {
-	ActivityID string
-	UserID     string
-	StravaID   int64
-	ExpiresAt  time.Time
 }

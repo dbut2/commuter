@@ -235,7 +235,6 @@ func (s *Server) activityRerun(c *gin.Context) {
 		s.fail(c, err)
 		return
 	}
-	s.proc.KickPoll()
 	c.Redirect(http.StatusSeeOther, "/activities/"+info.ActivityID)
 }
 

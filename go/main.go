@@ -40,9 +40,14 @@ func main() {
 	if r := os.Getenv("STRAVA_REDIRECT_URL"); r != "" {
 		auth.SetRedirectURL(r)
 	}
-	proc := processor.New(repo, auth)
+	proc, err := processor.New(sqlDB, repo, auth)
+	if err != nil {
+		log.Fatalf("commuter: queue: %v", err)
+	}
 	srv := server.New(repo, auth, proc, []byte(os.Getenv("SESSION_SECRET")), webhookToken)
-	proc.StartPoller(context.Background())
+	if err := proc.Start(context.Background()); err != nil {
+		log.Fatalf("commuter: queue: %v", err)
+	}
 
 	log.Printf("commuter listening on :%s", port)
 	if err := http.ListenAndServe(":"+port, srv); err != nil {
