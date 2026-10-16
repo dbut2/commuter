@@ -119,6 +119,8 @@ func feedCard(it store.FeedItem) web.ActivityCard {
 		case j.Status == "failed":
 			card.Status = "failed"
 			card.Note = j.LastError
+		case j.Status == "retrying":
+			card.Note = "retrying " + fmtTime(j.NextRun) + " after: " + j.LastError
 		case it.Status == "pending" && j.Status == "queued":
 			card.Note = "next poll " + fmtTime(j.NextRun)
 		case it.Status == "unprocessed":
