@@ -14,12 +14,15 @@ import (
 )
 
 type pgRepo struct {
-	q *database.Queries
+	db *sql.DB
+	q  *database.Queries
 }
 
 func NewPGRepo(db *sql.DB) Repo {
-	return &pgRepo{q: database.New(db)}
+	return &pgRepo{db: db, q: database.New(db)}
 }
+
+func (p *pgRepo) Ping(ctx context.Context) error { return p.db.PingContext(ctx) }
 
 func nullTime(t time.Time) sql.NullTime { return sql.NullTime{Time: t, Valid: !t.IsZero()} }
 
