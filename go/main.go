@@ -2,9 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"dbut.dev/commuter/go/processor"
 	"dbut.dev/commuter/go/server"
@@ -52,8 +56,28 @@ func main() {
 		log.Fatalf("commuter: queue: %v", err)
 	}
 
-	log.Printf("commuter listening on :%s", port)
-	if err := http.ListenAndServe(":"+port, srv); err != nil {
-		log.Fatal(err)
+	httpSrv := &http.Server{Addr: ":" + port, Handler: srv, ReadHeaderTimeout: 10 * time.Second}
+	go func() {
+		log.Printf("commuter listening on :%s", port)
+		if err := httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatal(err)
+		}
+	}()
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	<-ctx.Done()
+	log.Print("commuter: shutting down")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 9*time.Second)
+	defer cancel()
+	if err := httpSrv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("commuter: http shutdown: %v", err)
+	}
+	if err := proc.Stop(shutdownCtx); err != nil {
+		log.Printf("commuter: queue shutdown: %v", err)
+	}
+	if err := sqlDB.Close(); err != nil {
+		log.Printf("commuter: db close: %v", err)
 	}
 }

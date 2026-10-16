@@ -86,10 +86,13 @@ func newRiver(db *sql.DB, p *Processor) (*river.Client[*sql.Tx], error) {
 		Queues:            map[string]river.QueueConfig{river.QueueDefault: {MaxWorkers: 1}},
 		Workers:           workers,
 		FetchPollInterval: 5 * time.Second,
+		SoftStopTimeout:   5 * time.Second,
 	})
 }
 
 func (p *Processor) Start(ctx context.Context) error { return p.river.Start(ctx) }
+
+func (p *Processor) Stop(ctx context.Context) error { return p.river.Stop(ctx) }
 
 func (p *Processor) Enqueue(ctx context.Context, userID string, stravaID int64) error {
 	if _, err := p.repo.UpsertActivity(ctx, userID, stravaID, "unprocessed", nil, time.Time{}, nil); err != nil {
