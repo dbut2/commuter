@@ -8,10 +8,10 @@ func TestParseNearTarget(t *testing.T) {
 		coords [2]float64
 		radius float64
 	}{
-		{"-37.68, 144.58", [2]float64{-37.68, 144.58}, 300},
-		{"-37.68, 144.58 500m", [2]float64{-37.68, 144.58}, 500},
-		{"-37.68,144.58 1.5km", [2]float64{-37.68, 144.58}, 1500},
-		{"-37.68, 144.58 250", [2]float64{-37.68, 144.58}, 250},
+		{"-37.84, 144.97", [2]float64{-37.84, 144.97}, 300},
+		{"-37.84, 144.97 500m", [2]float64{-37.84, 144.97}, 500},
+		{"-37.84,144.97 1.5km", [2]float64{-37.84, 144.97}, 1500},
+		{"-37.84, 144.97 250", [2]float64{-37.84, 144.97}, 250},
 	}
 	for _, c := range cases {
 		got, err := ParseNearTarget(c.in)
@@ -40,7 +40,7 @@ func TestHaversineMetres(t *testing.T) {
 }
 
 func TestParseValueKinds(t *testing.T) {
-	if _, err := ParseValue(KindCoords, "-37.68, 144.58"); err != nil {
+	if _, err := ParseValue(KindCoords, "-37.84, 144.97"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := ParseValue(KindNumber, "300"); err != nil {

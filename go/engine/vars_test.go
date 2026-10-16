@@ -10,14 +10,14 @@ import (
 
 func varsEng() *Engine {
 	return New(provider.Strava{}, provider.Vars{Defs: []provider.VarDef{
-		{Name: "home", Kind: core.KindCoords, Value: "-37.6832, 144.5810"},
+		{Name: "home", Kind: core.KindCoords, Value: "-37.8450, 144.9700"},
 		{Name: "min_km", Kind: core.KindNumber, Value: "10"},
 	}})
 }
 
 func nearHomeActivity() core.Activity {
 	a := testActivity()
-	a.StartLoc = [2]float64{-37.6830, 144.5812}
+	a.StartLoc = [2]float64{-37.8448, 144.9702}
 	a.EndLoc = [2]float64{-37.8136, 144.9631}
 	return a
 }

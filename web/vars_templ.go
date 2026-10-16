@@ -338,7 +338,7 @@ func VarsPage(vars []VarRow, initials string) templ.Component {
 									}()
 								}
 								ctx = templ.InitializeContext(ctx)
-								templ_7745c5c3_Err = kit.TextInput(kit.InputOpts{Form: "var-add", Name: "value", Size: kit.XS, W: "full", Mono: true, Placeholder: "-37.68, 144.58", Required: true}).Render(ctx, templ_7745c5c3_Buffer)
+								templ_7745c5c3_Err = kit.TextInput(kit.InputOpts{Form: "var-add", Name: "value", Size: kit.XS, W: "full", Mono: true, Placeholder: "-37.84, 144.97", Required: true}).Render(ctx, templ_7745c5c3_Buffer)
 								if templ_7745c5c3_Err != nil {
 									return templ_7745c5c3_Err
 								}
