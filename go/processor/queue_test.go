@@ -3,6 +3,7 @@ package processor
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -120,4 +121,18 @@ func TestQueue_ProcessesEnqueuedActivity(t *testing.T) {
 		time.Sleep(500 * time.Millisecond)
 	}
 	t.Fatal("activity was not processed by the queue")
+}
+
+func TestWorker_SnoozesUntilRateLimitReset(t *testing.T) {
+	reset := time.Now().Add(10 * time.Minute)
+	w := &activityWorker{
+		process: func(context.Context, string, int64) (string, bool, error) {
+			return "", false, fmt.Errorf("get activity: %w", &strava.RateLimitError{ResetAt: reset})
+		},
+	}
+	err := w.Work(context.Background(), testJob(time.Now().Add(time.Hour)))
+	var snooze *rivertype.JobSnoozeError
+	if !errors.As(err, &snooze) || snooze.Duration < 9*time.Minute || snooze.Duration > 10*time.Minute {
+		t.Fatalf("err = %v", err)
+	}
 }

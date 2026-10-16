@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"golang.org/x/oauth2"
 )
@@ -42,7 +43,9 @@ func (a *Auth) Exchange(ctx context.Context, code string) (*oauth2.Token, error)
 
 func (a *Auth) HTTPClient(ctx context.Context, tok *oauth2.Token, save func(*oauth2.Token) error) *http.Client {
 	src := &savingSource{src: a.cfg.TokenSource(ctx, tok), save: save}
-	return oauth2.NewClient(ctx, oauth2.ReuseTokenSource(tok, src))
+	client := oauth2.NewClient(ctx, oauth2.ReuseTokenSource(tok, src))
+	client.Transport = &rateLimitTransport{base: client.Transport, now: time.Now}
+	return client
 }
 
 type savingSource struct {
