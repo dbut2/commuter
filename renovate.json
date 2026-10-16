@@ -1,0 +1,24 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "ignorePaths": [
+    ".github/workflows/automerge.yaml",
+    ".github/workflows/quality-docker.yaml",
+    ".github/workflows/quality-go.yaml"
+  ],
+  "platformAutomerge": true,
+  "automergeType": "pr",
+  "automergeStrategy": "squash",
+  "schedule": ["on monday"],
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["major", "minor", "patch", "pin", "digest"],
+      "automerge": true,
+      "groupName": "all dependencies",
+      "groupSlug": "all"
+    }
+  ],
+  "baseBranchPatterns": ["main"]
+}
