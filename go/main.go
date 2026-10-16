@@ -44,7 +44,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("commuter: queue: %v", err)
 	}
-	srv := server.New(repo, auth, proc, []byte(os.Getenv("SESSION_SECRET")), webhookToken)
+	srv, err := server.New(repo, auth, proc, baseURL, []byte(os.Getenv("SESSION_SECRET")), webhookToken)
+	if err != nil {
+		log.Fatalf("commuter: %v", err)
+	}
 	if err := proc.Start(context.Background()); err != nil {
 		log.Fatalf("commuter: queue: %v", err)
 	}
