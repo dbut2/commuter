@@ -2,8 +2,10 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 
 	"github.com/gin-gonic/gin"
 
@@ -22,19 +24,26 @@ type Server struct {
 	proc         *processor.Processor
 }
 
-func New(repo store.Repo, auth *strava.Auth, proc *processor.Processor, sessionSecret []byte, webhookToken string) *Server {
+func New(repo store.Repo, auth *strava.Auth, proc *processor.Processor, baseURL string, sessionSecret []byte, webhookToken string) (*Server, error) {
+	base, err := url.Parse(baseURL)
+	if err != nil || base.Scheme == "" || base.Host == "" {
+		return nil, fmt.Errorf("invalid base url %q", baseURL)
+	}
+	if len(sessionSecret) == 0 {
+		return nil, fmt.Errorf("session secret is required")
+	}
 	gin.SetMode(gin.ReleaseMode)
 	s := &Server{
 		repo:         repo,
 		auth:         auth,
 		proc:         proc,
-		sess:         newSessions(sessionSecret),
+		sess:         newSessions(sessionSecret, base.Scheme == "https"),
 		webhookToken: webhookToken,
 		engine:       gin.New(),
 	}
-	s.engine.Use(gin.Recovery())
+	s.engine.Use(gin.Recovery(), sameOrigin(base.Scheme+"://"+base.Host, "/strava/webhook"))
 	s.routes()
-	return s
+	return s, nil
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) { s.engine.ServeHTTP(w, r) }
@@ -89,7 +98,7 @@ func (s *Server) user(c *gin.Context) (string, bool) {
 
 func (s *Server) connect(c *gin.Context) {
 	state := randomToken()
-	setStateCookie(c.Writer, state)
+	s.sess.setState(c.Writer, state)
 	c.Redirect(http.StatusSeeOther, s.auth.AuthURL(state))
 }
 
@@ -100,7 +109,7 @@ func (s *Server) stravaCallback(c *gin.Context) {
 		c.String(http.StatusBadRequest, "invalid oauth state")
 		return
 	}
-	clearCookie(c.Writer, stateCookie)
+	s.sess.clear(c.Writer, stateCookie)
 	if c.Query("error") != "" {
 		c.Redirect(http.StatusSeeOther, "/")
 		return
@@ -134,7 +143,7 @@ func (s *Server) stravaCallback(c *gin.Context) {
 }
 
 func (s *Server) logout(c *gin.Context) {
-	clearCookie(c.Writer, cookieName)
+	s.sess.clear(c.Writer, cookieName)
 	c.Redirect(http.StatusSeeOther, "/")
 }
 
@@ -148,6 +157,6 @@ func (s *Server) deleteAccount(c *gin.Context) {
 		s.fail(c, err)
 		return
 	}
-	clearCookie(c.Writer, cookieName)
+	s.sess.clear(c.Writer, cookieName)
 	c.Redirect(http.StatusSeeOther, "/")
 }
