@@ -154,3 +154,38 @@ func TestWebhook_IgnoresUnknownAthleteAndOtherEvents(t *testing.T) {
 		t.Fatal("non-deauth athlete update deleted the user")
 	}
 }
+
+func TestDeleteUserRemovesTheirJobs(t *testing.T) {
+	_, repo, db := testWebhook(t)
+	ctx := context.Background()
+	keep, err := repo.UpsertUser(ctx, 200, "keep")
+	if err != nil {
+		t.Fatal(err)
+	}
+	gone, err := repo.UpsertUser(ctx, 201, "gone")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, uid := range []string{keep, gone} {
+		if _, err := db.Exec(`insert into river_job (kind, args, queue, max_attempts, state) values ('process_activity', jsonb_build_object('user_id', $1::text, 'strava_id', $2::bigint), 'default', 3, 'available')`, uid, 900+i); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := repo.DeleteUser(ctx, gone); err != nil {
+		t.Fatal(err)
+	}
+	var left []string
+	rows, err := db.Query("select args->>'user_id' from river_job")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var u string
+		_ = rows.Scan(&u)
+		left = append(left, u)
+	}
+	if len(left) != 1 || left[0] != keep {
+		t.Fatalf("remaining jobs belong to %v, want only %s", left, keep)
+	}
+}

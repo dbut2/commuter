@@ -22,6 +22,15 @@ func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const deleteUserJobs = `-- name: DeleteUserJobs :exec
+delete from river_job where args->>'user_id' = $1::text
+`
+
+func (q *Queries) DeleteUserJobs(ctx context.Context, userID string) error {
+	_, err := q.db.ExecContext(ctx, deleteUserJobs, userID)
+	return err
+}
+
 const ensureUser = `-- name: EnsureUser :one
 insert into users (strava_athlete_id, name)
 values ($1, $2)

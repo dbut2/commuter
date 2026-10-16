@@ -18,6 +18,7 @@ type Querier interface {
 	DeleteRule(ctx context.Context, arg DeleteRuleParams) error
 	DeleteSegment(ctx context.Context, arg DeleteSegmentParams) error
 	DeleteUser(ctx context.Context, id uuid.UUID) error
+	DeleteUserJobs(ctx context.Context, userID string) error
 	DeleteVar(ctx context.Context, arg DeleteVarParams) error
 	EnsureUser(ctx context.Context, arg EnsureUserParams) (User, error)
 	ExistingStravaIDs(ctx context.Context, arg ExistingStravaIDsParams) ([]int64, error)

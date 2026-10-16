@@ -70,6 +70,9 @@ func (p *pgRepo) DeleteUser(ctx context.Context, userID string) error {
 	if err != nil {
 		return err
 	}
+	if err := p.q.DeleteUserJobs(ctx, uid.String()); err != nil {
+		return err
+	}
 	return p.q.DeleteUser(ctx, uid)
 }
 
