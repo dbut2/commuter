@@ -51,6 +51,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) { s.engine.Se
 func (s *Server) routes() {
 	r := s.engine
 	r.StaticFS("/static", http.FS(web.Static))
+	r.GET("/health", s.health)
 	r.GET("/", s.root)
 	r.POST("/connect", s.connect)
 	r.GET("/auth/strava/callback", s.stravaCallback)
@@ -81,6 +82,14 @@ func (s *Server) routes() {
 	r.POST("/settings/parkrun", s.settingsParkrun)
 	r.POST("/settings/segments", s.segmentSave)
 	r.POST("/settings/segments/delete", s.segmentDelete)
+}
+
+func (s *Server) health(c *gin.Context) {
+	if err := s.repo.Ping(c.Request.Context()); err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "unhealthy"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
 func (s *Server) fail(c *gin.Context, err error) {
