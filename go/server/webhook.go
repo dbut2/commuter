@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -17,10 +18,11 @@ func (s *Server) webhookVerify(c *gin.Context) {
 }
 
 type stravaEvent struct {
-	ObjectType string `json:"object_type"`
-	AspectType string `json:"aspect_type"`
-	ObjectID   int64  `json:"object_id"`
-	OwnerID    int64  `json:"owner_id"`
+	ObjectType string         `json:"object_type"`
+	AspectType string         `json:"aspect_type"`
+	ObjectID   int64          `json:"object_id"`
+	OwnerID    int64          `json:"owner_id"`
+	Updates    map[string]any `json:"updates"`
 }
 
 func (s *Server) webhookEvent(c *gin.Context) {
@@ -29,28 +31,26 @@ func (s *Server) webhookEvent(c *gin.Context) {
 		c.Status(http.StatusOK)
 		return
 	}
-	c.Status(http.StatusOK)
-	if ev.ObjectType != "activity" || (ev.AspectType != "create" && ev.AspectType != "update") {
+	if err := s.handleEvent(c.Request.Context(), ev); err != nil {
+		log.Printf("commuter: webhook %s %s %d: %v", ev.ObjectType, ev.AspectType, ev.ObjectID, err)
+		c.Status(http.StatusInternalServerError)
 		return
 	}
-	go func() {
-		ctx := context.Background()
-		userID, err := s.repo.UserIDByStrava(ctx, ev.OwnerID)
-		if err != nil || userID == "" {
-			return
-		}
-		if ev.AspectType == "update" {
-			known, err := s.proc.RefreshStravaData(ctx, userID, ev.ObjectID)
-			if err != nil {
-				log.Printf("commuter: webhook refresh: %v", err)
-				return
-			}
-			if known {
-				return
-			}
-		}
-		if err := s.proc.Enqueue(ctx, userID, ev.ObjectID); err != nil {
-			log.Printf("commuter: webhook enqueue: %v", err)
-		}
-	}()
+	c.Status(http.StatusOK)
+}
+
+func (s *Server) handleEvent(ctx context.Context, ev stravaEvent) error {
+	userID, err := s.repo.UserIDByStrava(ctx, ev.OwnerID)
+	if err != nil || userID == "" {
+		return err
+	}
+	switch {
+	case ev.ObjectType == "athlete" && fmt.Sprint(ev.Updates["authorized"]) == "false":
+		return s.repo.DeleteUser(ctx, userID)
+	case ev.ObjectType == "activity" && ev.AspectType == "create":
+		return s.proc.Enqueue(ctx, userID, ev.ObjectID)
+	case ev.ObjectType == "activity" && ev.AspectType == "update":
+		return s.proc.EnqueueRefresh(ctx, userID, ev.ObjectID)
+	}
+	return nil
 }

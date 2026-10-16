@@ -23,20 +23,29 @@ type ProcessActivityArgs struct {
 
 func (ProcessActivityArgs) Kind() string { return "process_activity" }
 
-func (ProcessActivityArgs) InsertOpts() river.InsertOpts {
-	return river.InsertOpts{
-		MaxAttempts: 3,
-		UniqueOpts: river.UniqueOpts{
-			ByArgs: true,
-			ByState: []rivertype.JobState{
-				rivertype.JobStateAvailable,
-				rivertype.JobStatePending,
-				rivertype.JobStateRetryable,
-				rivertype.JobStateRunning,
-				rivertype.JobStateScheduled,
-			},
+func (ProcessActivityArgs) InsertOpts() river.InsertOpts { return uniqueInsertOpts }
+
+type RefreshActivityArgs struct {
+	UserID   string `json:"user_id"`
+	StravaID int64  `json:"strava_id" river:"unique"`
+}
+
+func (RefreshActivityArgs) Kind() string { return "refresh_activity" }
+
+func (RefreshActivityArgs) InsertOpts() river.InsertOpts { return uniqueInsertOpts }
+
+var uniqueInsertOpts = river.InsertOpts{
+	MaxAttempts: 3,
+	UniqueOpts: river.UniqueOpts{
+		ByArgs: true,
+		ByState: []rivertype.JobState{
+			rivertype.JobStateAvailable,
+			rivertype.JobStatePending,
+			rivertype.JobStateRetryable,
+			rivertype.JobStateRunning,
+			rivertype.JobStateScheduled,
 		},
-	}
+	},
 }
 
 type activityWorker struct {
@@ -59,9 +68,20 @@ func (w *activityWorker) Work(ctx context.Context, job *river.Job[ProcessActivit
 	return river.JobSnooze(pollBackoff)
 }
 
+type refreshWorker struct {
+	river.WorkerDefaults[RefreshActivityArgs]
+	p *Processor
+}
+
+func (w *refreshWorker) Work(ctx context.Context, job *river.Job[RefreshActivityArgs]) error {
+	_, err := w.p.RefreshStravaData(ctx, job.Args.UserID, job.Args.StravaID)
+	return err
+}
+
 func newRiver(db *sql.DB, p *Processor) (*river.Client[*sql.Tx], error) {
 	workers := river.NewWorkers()
 	river.AddWorker(workers, &activityWorker{process: p.process, setFinished: p.repo.SetActivityStatus})
+	river.AddWorker(workers, &refreshWorker{p: p})
 	return river.NewClient(riverdatabasesql.New(db), &river.Config{
 		Queues:            map[string]river.QueueConfig{river.QueueDefault: {MaxWorkers: 1}},
 		Workers:           workers,
@@ -82,5 +102,17 @@ func (p *Processor) Enqueue(ctx context.Context, userID string, stravaID int64) 
 	if res.UniqueSkippedAsDuplicate && res.Job.State == rivertype.JobStateScheduled {
 		_, err = p.river.JobRetry(ctx, res.Job.ID)
 	}
+	return err
+}
+
+func (p *Processor) EnqueueRefresh(ctx context.Context, userID string, stravaID int64) error {
+	activityID, err := p.repo.ActivityIDByStrava(ctx, userID, stravaID)
+	if err != nil {
+		return err
+	}
+	if activityID == "" {
+		return p.Enqueue(ctx, userID, stravaID)
+	}
+	_, err = p.river.Insert(ctx, RefreshActivityArgs{UserID: userID, StravaID: stravaID}, nil)
 	return err
 }
