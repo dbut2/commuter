@@ -95,7 +95,7 @@ func LoginPage() templ.Component {
 								}()
 							}
 							ctx = templ.InitializeContext(ctx)
-							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "Rules that tidy up your Strava activities as they upload — commutes, parkruns, challenge totals.")
+							templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "Rules that tidy up your Strava activities as they upload — commutes, segment laps, challenge totals.")
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}

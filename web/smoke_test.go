@@ -77,6 +77,12 @@ func TestPagesRender(t *testing.T) {
 			},
 			[]string{"parkrun_id", "alert-success", "Delete account", "form=\"segment-add\"", "form=\"segment-del\"", "albert_park"},
 		},
+		"settings without parkrun": {
+			func(w *strings.Builder) error {
+				return SettingsPage("", nil, false, "DB").Render(context.Background(), w)
+			},
+			[]string{"Delete account", "form=\"segment-add\""},
+		},
 	}
 	for name, p := range pages {
 		var w strings.Builder
@@ -89,5 +95,15 @@ func TestPagesRender(t *testing.T) {
 				t.Errorf("%s: output missing %q", name, want)
 			}
 		}
+	}
+}
+
+func TestSettingsHidesParkrunWithoutID(t *testing.T) {
+	var w strings.Builder
+	if err := SettingsPage("", nil, false, "DB").Render(context.Background(), &w); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(w.String(), "parkrun") {
+		t.Fatal("parkrun settings shown to a user without a parkrun ID")
 	}
 }

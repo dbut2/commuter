@@ -537,6 +537,16 @@ func (s *Server) settingsParkrun(c *gin.Context) {
 	if !ok {
 		return
 	}
+	ctx := c.Request.Context()
+	current, err := s.repo.ParkrunID(ctx, userID)
+	if err != nil {
+		s.fail(c, err)
+		return
+	}
+	if current == "" {
+		c.String(http.StatusNotFound, "not found")
+		return
+	}
 	id := strings.TrimSpace(c.PostForm("parkrun_id"))
 	if id != "" {
 		ok := id[0] == 'A' || id[0] == 'a' || (id[0] >= '0' && id[0] <= '9')
@@ -548,7 +558,7 @@ func (s *Server) settingsParkrun(c *gin.Context) {
 			return
 		}
 	}
-	if err := s.repo.SetParkrunID(c.Request.Context(), userID, id); err != nil {
+	if err := s.repo.SetParkrunID(ctx, userID, id); err != nil {
 		s.fail(c, err)
 		return
 	}

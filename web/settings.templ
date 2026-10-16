@@ -11,17 +11,19 @@ templ SettingsPage(parkrunID string, segments []SegmentRow, saved bool, initials
 					Saved.
 				}
 			}
-			@kit.Card() {
-				@kit.CardBody(kit.BodyOpts{Pad: 5, Gap: 3}) {
-					@kit.SectionLabel("parkrun")
-					@kit.Muted() {
-						Your parkrun athlete ID — the A-number on your barcode. Rules that use
-						@kit.Code("{parkrun.*}")
-						tokens are skipped until this is set.
-					}
-					@kit.Form(kit.FormOpts{Action: "/settings/parkrun", Row: true}) {
-						@kit.TextInput(kit.InputOpts{Name: "parkrun_id", Value: parkrunID, Size: kit.SM, W: "40", Mono: true, Placeholder: "A1234567", Pattern: "[Aa]?[0-9]*", Title: "A followed by digits, or empty to disconnect"})
-						@kit.Button("Save", kit.BtnOpts{Tone: kit.Primary, Size: kit.SM})
+			if parkrunID != "" {
+				@kit.Card() {
+					@kit.CardBody(kit.BodyOpts{Pad: 5, Gap: 3}) {
+						@kit.SectionLabel("parkrun")
+						@kit.Muted() {
+							Your parkrun athlete ID — the A-number on your barcode. Rules that use
+							@kit.Code("{parkrun.*}")
+							tokens are skipped until this is set.
+						}
+						@kit.Form(kit.FormOpts{Action: "/settings/parkrun", Row: true}) {
+							@kit.TextInput(kit.InputOpts{Name: "parkrun_id", Value: parkrunID, Size: kit.SM, W: "40", Mono: true, Placeholder: "A1234567", Pattern: "[Aa]?[0-9]*", Title: "A followed by digits, or empty to disconnect"})
+							@kit.Button("Save", kit.BtnOpts{Tone: kit.Primary, Size: kit.SM})
+						}
 					}
 				}
 			}

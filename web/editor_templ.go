@@ -140,7 +140,7 @@ func EditorPage(e Editor, initials string) templ.Component {
 									}()
 								}
 								ctx = templ.InitializeContext(ctx)
-								templ_7745c5c3_Err = kit.TextInput(kit.InputOpts{Name: "name", Value: e.Name, Size: kit.SM, Required: true, Placeholder: "parkrun title"}).Render(ctx, templ_7745c5c3_Buffer)
+								templ_7745c5c3_Err = kit.TextInput(kit.InputOpts{Name: "name", Value: e.Name, Size: kit.SM, Required: true, Placeholder: "Albert Park laps"}).Render(ctx, templ_7745c5c3_Buffer)
 								if templ_7745c5c3_Err != nil {
 									return templ_7745c5c3_Err
 								}
@@ -502,7 +502,7 @@ func ActRow(a ActRowVM) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = kit.TextInput(kit.InputOpts{Name: "act_template", Value: a.Template, Size: kit.SM, Mono: true, TokenTarget: true, Placeholder: "{parkrun.event_name} #{parkrun.event_number}", Title: `\n inserts a line break in descriptions`}).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = kit.TextInput(kit.InputOpts{Name: "act_template", Value: a.Template, Size: kit.SM, Mono: true, TokenTarget: true, Placeholder: "Albert Park x{segments.albert_park_count}", Title: `\n inserts a line break in descriptions`}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
