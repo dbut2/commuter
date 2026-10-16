@@ -1,6 +1,20 @@
 package web
 
-import "embed"
+import (
+	"embed"
+	"io/fs"
+	"log"
+)
 
 //go:embed static
-var Static embed.FS
+var static embed.FS
+
+var Static fs.FS
+
+func init() {
+	var err error
+	Static, err = fs.Sub(static, "static")
+	if err != nil {
+		log.Fatal(err)
+	}
+}
