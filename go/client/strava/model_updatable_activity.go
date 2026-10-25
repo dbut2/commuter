@@ -14,6 +14,8 @@ type UpdatableActivity struct {
 	Commute bool `json:"commute,omitempty"`
 	// Whether this activity was recorded on a training machine
 	Trainer bool `json:"trainer,omitempty"`
+	// Activity tags to set, keyed by tag name with a boolean value (true to add, false to remove). Only the tags you include are changed; any tag you omit — and every other tag on the activity — is left unchanged. Any tag outside the supported set is rejected. Commute is set here rather than via the legacy commute param, and the two cannot be combined in the same request.
+	Tags map[string]Object `json:"tags,omitempty"`
 	// Whether this activity is muted
 	HideFromHome bool `json:"hide_from_home,omitempty"`
 	// The description of the activity

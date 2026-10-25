@@ -41,6 +41,7 @@ Creates a manual activity for an athlete, requires activity:write scope.
      * @param "Distance" (optional.Float32) -  In meters.
      * @param "Trainer" (optional.Int32) -  Set to 1 to mark as a trainer activity.
      * @param "Commute" (optional.Int32) -  Set to 1 to mark as commute.
+     * @param "Tags" (optional.String) -  Activity tags to set, sent as form fields keyed by tag name with a boolean value, e.g. &#x60;tags[WithPet]&#x3D;true&#x60; (true adds, false removes). Supported tags: WithPet, Recovery, Competition, ForACause, Commute. Any other tag is rejected. This cannot be combined with the legacy commute param in the same request.
 
 @return DetailedActivity
 */
@@ -51,6 +52,7 @@ type ActivitiesApiCreateActivityOpts struct {
 	Distance    optional.Float32
 	Trainer     optional.Int32
 	Commute     optional.Int32
+	Tags        optional.String
 }
 
 func (a *ActivitiesApiService) CreateActivity(ctx context.Context, name string, sportType string, startDateLocal time.Time, elapsedTime int32, localVarOptionals *ActivitiesApiCreateActivityOpts) (DetailedActivity, *http.Response, error) {
@@ -104,6 +106,9 @@ func (a *ActivitiesApiService) CreateActivity(ctx context.Context, name string, 
 	}
 	if localVarOptionals != nil && localVarOptionals.Commute.IsSet() {
 		localVarFormParams.Add("commute", parameterToString(localVarOptionals.Commute.Value(), ""))
+	}
+	if localVarOptionals != nil && localVarOptionals.Tags.IsSet() {
+		localVarFormParams.Add("tags", parameterToString(localVarOptionals.Tags.Value(), ""))
 	}
 	r, err := a.client.prepareRequest(ctx, localVarPath, localVarHttpMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, localVarFileName, localVarFileBytes)
 	if err != nil {
