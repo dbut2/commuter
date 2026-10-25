@@ -37,6 +37,7 @@ Uploads a new data file to create an activity from. Requires activity:write scop
      * @param "Description" (optional.String) -  The desired description of the resulting activity.
      * @param "Trainer" (optional.String) -  Whether the resulting activity should be marked as having been performed on a trainer.
      * @param "Commute" (optional.String) -  Whether the resulting activity should be tagged as a commute.
+     * @param "Tags" (optional.String) -  Activity tags to set on the resulting activity, sent as form fields keyed by tag name with a boolean value, e.g. &#x60;tags[WithPet]&#x3D;true&#x60; (true adds, false removes). Supported tags: WithPet, Recovery, Competition, ForACause, Commute. Any other tag is rejected. This cannot be combined with the legacy commute param in the same request.
      * @param "DataType" (optional.String) -  The format of the uploaded file.
      * @param "ExternalId" (optional.String) -  The desired external identifier of the resulting activity.
 
@@ -49,6 +50,7 @@ type UploadsApiCreateUploadOpts struct {
 	Description optional.String
 	Trainer     optional.String
 	Commute     optional.String
+	Tags        optional.String
 	DataType    optional.String
 	ExternalId  optional.String
 }
@@ -111,6 +113,9 @@ func (a *UploadsApiService) CreateUpload(ctx context.Context, localVarOptionals 
 	}
 	if localVarOptionals != nil && localVarOptionals.Commute.IsSet() {
 		localVarFormParams.Add("commute", parameterToString(localVarOptionals.Commute.Value(), ""))
+	}
+	if localVarOptionals != nil && localVarOptionals.Tags.IsSet() {
+		localVarFormParams.Add("tags", parameterToString(localVarOptionals.Tags.Value(), ""))
 	}
 	if localVarOptionals != nil && localVarOptionals.DataType.IsSet() {
 		localVarFormParams.Add("data_type", parameterToString(localVarOptionals.DataType.Value(), ""))

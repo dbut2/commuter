@@ -65,6 +65,8 @@ type DetailedActivity struct {
 	Trainer bool `json:"trainer,omitempty"`
 	// Whether this activity is a commute
 	Commute bool `json:"commute,omitempty"`
+	// The activity tags currently applied to this activity
+	Tags []string `json:"tags,omitempty"`
 	// Whether this activity was created manually
 	Manual bool `json:"manual,omitempty"`
 	// Whether this activity is private
