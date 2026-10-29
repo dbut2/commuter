@@ -45,18 +45,6 @@ func (p *pgRepo) UserIDByStrava(ctx context.Context, athleteID int64) (string, e
 	return id.String(), nil
 }
 
-func (p *pgRepo) UserName(ctx context.Context, userID string) (string, error) {
-	uid, err := uuid.Parse(userID)
-	if err != nil {
-		return "", err
-	}
-	u, err := p.q.GetUser(ctx, uid)
-	if err != nil {
-		return "", err
-	}
-	return u.Name, nil
-}
-
 func (p *pgRepo) SetStravaToken(ctx context.Context, userID string, token []byte) error {
 	uid, err := uuid.Parse(userID)
 	if err != nil {

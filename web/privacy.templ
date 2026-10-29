@@ -1,61 +1,38 @@
 package web
 
-import "dbut.dev/x/kit"
-
 templ PrivacyPage() {
-	@kit.Document("Privacy | commuter") {
-		@kit.Page(kit.WidthNarrow) {
-			@kit.Title("Privacy")
-			@kit.T("Last updated 16 October 2026", kit.TextOpts{SM: true, Faint: true, Block: true})
-			@privacySection("What's stored") {
-				@kit.Stack(2) {
-					@kit.Span() {
-						Your Strava profile, and the access tokens Strava issues so commuter can update your activities.
-					}
-					@kit.Span() {
-						The rules and settings you create.
-					}
-					@kit.Span() {
-						Details of the activities your rules run on, including where they start and finish, and related information from other services, such as place names or event results.
-					}
-				}
-			}
-			@privacySection("How it's used") {
-				@kit.Span() {
-					Your data is used only to apply your rules to your own activities and to show you the results. It isn't sold or used for advertising, and there's no analytics or tracking.
-				}
-			}
-			@privacySection("Who else sees it") {
-				@kit.Stack(2) {
-					@kit.Span() {
-						Strava, to read your activities and apply your rules' changes to them.
-					}
-					@kit.Span() {
-						Lookup services your rules use, such as place names or event results. Each receives only what its lookup needs, for example an activity's location or an ID you've provided.
-					}
-				}
-			}
-			@privacySection("Cookies") {
-				@kit.Span() {
-					Only those needed to keep you signed in.
-				}
-			}
-			@privacySection("Deleting your data") {
-				@kit.Span() {
-					Deleting your account in Settings, or revoking access in Strava, removes everything listed above immediately. Changes already made to your activities on Strava remain.
-				}
-			}
-		}
-	}
-}
-
-templ privacySection(title string) {
-	@kit.Card() {
-		@kit.CardBody(kit.BodyOpts{Pad: 5, Gap: 2}) {
-			@kit.SectionLabel(title)
-			@kit.Muted() {
-				{ children... }
-			}
-		}
+	@doc("Privacy | commuter") {
+		<nav class="wrap top">
+			<a class="mark" href="/"><b>commuter</b></a>
+		</nav>
+		<main class="wrap page">
+			<div class="path">
+				<h1>privacy</h1>
+				<p>last updated 16 October 2026</p>
+			</div>
+			<section class="sec">
+				<h2>what's stored</h2>
+				<p>Your Strava profile, and the access tokens Strava issues so commuter can update your activities.</p>
+				<p>The rules and settings you create.</p>
+				<p>Details of the activities your rules run on, including where they start and finish, and related information from other services, such as place names or event results.</p>
+			</section>
+			<section class="sec">
+				<h2>how it's used</h2>
+				<p>Your data is used only to apply your rules to your own activities and to show you the results. It isn't sold or used for advertising, and there's no analytics or tracking.</p>
+			</section>
+			<section class="sec">
+				<h2>who else sees it</h2>
+				<p>Strava, to read your activities and apply your rules' changes to them.</p>
+				<p>Lookup services your rules use, such as place names or event results. Each receives only what its lookup needs, for example an activity's location or an ID you've provided.</p>
+			</section>
+			<section class="sec">
+				<h2>cookies</h2>
+				<p>Only those needed to keep you signed in.</p>
+			</section>
+			<section class="sec">
+				<h2>deleting your data</h2>
+				<p>Deleting your account in Settings, or revoking access in Strava, removes everything listed above immediately. Changes already made to your activities on Strava remain.</p>
+			</section>
+		</main>
 	}
 }
