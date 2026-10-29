@@ -1,60 +1,42 @@
 package web
 
-import "dbut.dev/x/kit"
-
-templ VarsPage(vars []VarRow, initials string) {
-	@kit.AppShell("Variables | commuter", nav("Variables", initials)) {
-		@kit.Page(kit.WidthNarrow) {
-			@kit.Title("Variables")
-			@kit.Muted() {
-				Named values you can use anywhere in a rule — as a condition value or as
-				@kit.Code("{vars.name}")
-				in templates. Coords variables power the
-				@kit.Code("is near")
-				operator.
-			}
-			@kit.Card() {
-				@kit.Table(kit.SM, []kit.Col{{Label: "Name"}, {Label: "Type"}, {Label: "Value"}, {Label: "Used"}, {}}) {
+templ VarsPage(vars []VarRow, n Nav) {
+	@shell("Variables", n) {
+		<div class="path">
+			<h1>variables</h1>
+			<p>Named values for rule conditions, or <code>{ "{vars.name}" }</code> in templates. Coords variables work with <code>is near</code>.</p>
+		</div>
+		<section class="sec">
+			<table class="tbl">
+				<thead>
+					<tr><th>name</th><th>type</th><th>value</th><th>used</th><th></th></tr>
+				</thead>
+				<tbody>
 					for _, v := range vars {
-						@kit.TR(kit.RowStyle{Hover: true}) {
-							@kit.TD(kit.CellOpts{Mono: true, XS: true, Strong: true}) {
-								{ v.Name }
-							}
-							@kit.TD(kit.CellOpts{}) {
-								@kit.Badge(v.Type, kit.BadgeOpts{Tone: kit.Ghost, Size: kit.SM, Mono: true})
-							}
-							@kit.TD(kit.CellOpts{Mono: true, XS: true, Faint: true, Break: true}) {
-								{ v.Value }
-							}
-							@kit.TD(kit.CellOpts{XS: true, Faint: true, NoWrap: true}) {
-								{ v.Used }
-							}
-							@kit.TD(kit.CellOpts{Right: true}) {
-								@kit.Button("Delete", kit.BtnOpts{Ghost: true, Size: kit.XS, Danger: true, Form: "var-del", Name: "name", Value: v.Name, Confirm: "Delete this variable?"})
-							}
-						}
+						<tr>
+							<td class="mono grow"><b>{ v.Name }</b></td>
+							<td class="small">{ v.Type }</td>
+							<td class="mono wide">{ v.Value }</td>
+							<td class="small">{ v.Used }</td>
+							<td><button class="btn quiet stop" form="var-del" name="name" value={ v.Name } onclick="return confirm('Delete this variable?')">delete</button></td>
+						</tr>
 					}
-					@kit.TR(kit.RowStyle{Tint: true}) {
-						@kit.TD(kit.CellOpts{}) {
-							@kit.TextInput(kit.InputOpts{Form: "var-add", Name: "name", Size: kit.XS, W: "24", Mono: true, Placeholder: "name", Required: true, Pattern: "[a-zA-Z0-9_]+", Title: "letters, digits and underscores"})
-						}
-						@kit.TD(kit.CellOpts{}) {
-							@kit.Select(kit.SelectOpts{Form: "var-add", Name: "type", Size: kit.XS, Mono: true, Selected: "coords"}, typeOptions())
-						}
-						@kit.TD(kit.CellOpts{Colspan: 2}) {
-							@kit.TextInput(kit.InputOpts{Form: "var-add", Name: "value", Size: kit.XS, W: "full", Mono: true, Placeholder: "-37.84, 144.97", Required: true})
-						}
-						@kit.TD(kit.CellOpts{Right: true}) {
-							@kit.Button("Add", kit.BtnOpts{Tone: kit.Primary, Size: kit.XS, Form: "var-add"})
-						}
-					}
-				}
-			}
-			@kit.Hint() {
-				Adding a variable with an existing name replaces its value — that's how you edit one.
-			}
-			@kit.Form(kit.FormOpts{ID: "var-add", Action: "/vars"})
-			@kit.Form(kit.FormOpts{ID: "var-del", Action: "/vars/delete"})
-		}
+					<tr class="add">
+						<td class="grow"><input class="input mono" form="var-add" name="name" aria-label="name" placeholder="name" required pattern="[a-zA-Z0-9_]+" title="letters, digits and underscores"/></td>
+						<td>
+							<select class="select mono" form="var-add" name="type" aria-label="type">
+								for _, t := range VarTypes {
+									<option selected?={ t == "coords" }>{ t }</option>
+								}
+							</select>
+						</td>
+						<td colspan="2" class="wide"><input class="input mono" form="var-add" name="value" aria-label="value" placeholder="-37.84, 144.97" required/></td>
+						<td><button class="btn" form="var-add">add</button></td>
+					</tr>
+				</tbody>
+			</table>
+		</section>
+		<form id="var-add" method="post" action="/vars"></form>
+		<form id="var-del" method="post" action="/vars/delete"></form>
 	}
 }

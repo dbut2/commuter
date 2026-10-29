@@ -1,25 +1,62 @@
 package web
 
-import "dbut.dev/x/kit"
+templ doc(title string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ title }</title>
+			<link rel="stylesheet" href="/static/app.css"/>
+			<script src="https://unpkg.com/htmx.org@2.0.8/dist/htmx.min.js"></script>
+		</head>
+		<body>
+			{ children... }
+		</body>
+	</html>
+}
+
+templ shell(title string, n Nav) {
+	@doc(title + " | commuter") {
+		<nav class="wrap top">
+			<a class="mark" href="/activities"><b>commuter</b></a>
+			@navLink("activities", "/activities", n.Active, n.activityLines())
+			@navLink("rules", "/rules", n.Active, n.ruleLines())
+			@navLink("variables", "/vars", n.Active, n.varLines())
+			@navLink("settings", "/settings", n.Active, n.settingLines())
+		</nav>
+		<main class="wrap page">
+			{ children... }
+		</main>
+	}
+}
+
+templ navLink(label, href, active string, lines []string) {
+	<a href={ templ.URL(href) } { current(label == active)... }>
+		<b>{ label }</b>
+		<span>
+			for i, l := range lines {
+				if i > 0 {
+					<br/>
+				}
+				{ l }
+			}
+		</span>
+	</a>
+}
 
 templ LoginPage() {
-	@kit.Document("commuter") {
-		@kit.Center() {
-			@kit.CardNarrow() {
-				@kit.CardBody(kit.BodyOpts{Gap: 3, Center: true}) {
-					@kit.Title("commuter")
-					@kit.Muted() {
-						Rules that tidy up your Strava activities as they upload — commutes, parkruns, challenge totals.
-					}
-					@kit.Form(kit.FormOpts{Action: "/connect"}) {
-						<button class="cursor-pointer">
-							<img src="/static/btn_strava_connect_with_orange.svg" alt="Connect with Strava" width="237" height="48"/>
-						</button>
-					}
-					<img src="/static/api_logo_pwrdBy_strava_horiz_black.svg" alt="Powered by Strava" class="h-3 w-auto"/>
-					@kit.LinkButton("Privacy", "/privacy", kit.BtnOpts{Ghost: true, Size: kit.XS})
-				}
-			}
-		}
+	@doc("commuter") {
+		<main class="wrap login">
+			<h1>commuter</h1>
+			<p>Rules that tidy up your Strava activities as they upload: commutes, parkruns, challenge totals.</p>
+			<form method="post" action="/connect">
+				<button class="connect">
+					<img src="/static/btn_strava_connect_with_orange.svg" alt="Connect with Strava" width="237" height="48"/>
+				</button>
+			</form>
+			<img class="powered" src="/static/api_logo_pwrdBy_strava_horiz_black.svg" alt="Powered by Strava"/>
+			<a href="/privacy">privacy</a>
+		</main>
 	}
 }
