@@ -1,56 +1,53 @@
 package web
 
-import "dbut.dev/x/kit"
-
-templ EditorPage(e Editor, initials string) {
-	@kit.AppShell(editorTitle(e)+" | commuter", nav("Rules", initials)) {
-		@kit.Page(kit.WidthMid) {
-			@kit.Breadcrumbs([]kit.Crumb{{Label: "Rules", Href: "/rules"}, {Label: editorTitle(e)}})
-			if e.Error != "" {
-				@kit.Alert(kit.Error) {
-					{ e.Error }
-				}
-			}
-			@kit.CardForm("/rules/save?id=" + e.ID) {
-				@kit.CardBody(kit.BodyOpts{Pad: 5, Gap: 5}) {
-					@kit.Row(kit.RowOpts{Gap: 4, AlignEnd: true}) {
-						@kit.Field("Name", true) {
-							@kit.TextInput(kit.InputOpts{Name: "name", Value: e.Name, Size: kit.SM, Required: true, Placeholder: "parkrun title"})
-						}
-						@kit.LabelToggle("Enabled", "enabled", e.Enabled)
-					}
-					@kit.Stack(2) {
-						@kit.SectionLabel("When all conditions match")
-						@kit.StackID("conds", 2) {
-							for _, c := range e.Conds {
-								@CondRow(e.Catalog, c)
-							}
-						}
-						@kit.FragmentButton("+ Add condition", "/rules/rows/cond", "#conds")
-					}
-					@kit.Stack(2) {
-						@kit.SectionLabel("Then")
-						@kit.StackID("acts", 2) {
-							for _, a := range e.Acts {
-								@ActRow(a)
-							}
-						}
-						@kit.FragmentButton("+ Add action", "/rules/rows/act", "#acts")
-					}
-					@TokenRef(e.Catalog)
-					@kit.ActionBar() {
-						@kit.Button("Save rule", kit.BtnOpts{Tone: kit.Primary, Size: kit.SM})
-						@kit.LinkButton("Cancel", "/rules", kit.BtnOpts{Ghost: true, Size: kit.SM})
-						@kit.Spacer()
-						if e.ID != "" {
-							@kit.Button("Delete", kit.BtnOpts{Ghost: true, Size: kit.SM, Danger: true, FormAction: "/rules/delete?id=" + e.ID, Confirm: "Delete this rule?"})
-						}
-					}
-				}
-			}
-			@kit.Datalist("var-tokens", varTokens(e.Catalog))
-			@kit.TokenInsertScript()
+templ EditorPage(e Editor, n Nav) {
+	@shell(editorTitle(e), n) {
+		if e.Error != "" {
+			<p class="notice err"><span class="led failed"></span>{ e.Error }</p>
 		}
+		<form class="form" method="post" action={ templ.URL("/rules/save?id=" + e.ID) }>
+			<div class="path">
+				<h1 class="named"><a href="/rules">rules</a><i>/</i><input class="title-input" name="name" value={ e.Name } placeholder="rule name" aria-label="name" required/></h1>
+				<label class="switch"><input type="checkbox" name="enabled" checked?={ e.Enabled }/> enabled</label>
+			</div>
+			<section class="sec">
+				<h2>when all of these match</h2>
+				<div class="stack">
+					<div id="conds" class="stack">
+						for _, c := range e.Conds {
+							@CondRow(e.Catalog, c)
+						}
+					</div>
+					<button type="button" class="btn" hx-get="/rules/rows/cond" hx-target="#conds" hx-swap="beforeend">+ condition</button>
+				</div>
+			</section>
+			<section class="sec">
+				<h2>then</h2>
+				<div class="stack">
+					<div id="acts" class="stack">
+						for _, a := range e.Acts {
+							@ActRow(a)
+						}
+					</div>
+					<button type="button" class="btn" hx-get="/rules/rows/act" hx-target="#acts" hx-swap="beforeend">+ action</button>
+				</div>
+			</section>
+			@TokenRef(e.Catalog)
+			<div class="bar">
+				<button class="btn go">save rule →</button>
+				<a class="btn quiet" href="/rules">cancel</a>
+				<span class="grow"></span>
+				if e.ID != "" {
+					<button class="btn quiet stop" formaction={ templ.URL("/rules/delete?id=" + e.ID) } formnovalidate onclick="return confirm('Delete this rule?')">delete</button>
+				}
+			</div>
+		</form>
+		<datalist id="var-tokens">
+			for _, v := range varTokens(e.Catalog) {
+				<option value={ v }></option>
+			}
+		</datalist>
+		@tokenScript()
 	}
 }
 
@@ -64,60 +61,111 @@ func editorTitle(e Editor) string {
 templ CondRow(catalog []Provider, c CondRowVM) {
 	{{ f, _ := FindField(catalog, c.Field) }}
 	{{ op := findOp(f, c.Op) }}
-	@kit.EditRow("cond-row", kit.GridFieldOpValue) {
-		@kit.GroupedSelect(kit.SelectOpts{Name: "cond_field", Size: kit.SM, Mono: true, MobileWide: true, Selected: c.Field, Refresh: &kit.Refresh{URL: "/rules/rows/cond", Row: ".cond-row"}}, fieldGroups(catalog))
-		@kit.Select(kit.SelectOpts{Name: "cond_op", Size: kit.SM, Selected: op.Name, Refresh: &kit.Refresh{URL: "/rules/rows/cond", Row: ".cond-row"}}, opOptions(f))
+	<div class="cond-row">
+		<select class="select mono" name="cond_field" aria-label="field" hx-get="/rules/rows/cond" hx-include="closest .cond-row" hx-target="closest .cond-row" hx-swap="outerHTML">
+			for _, p := range catalog {
+				if len(p.Fields) > 0 {
+					<optgroup label={ p.Name }>
+						for _, pf := range p.Fields {
+							<option selected?={ p.Name+"."+pf.Key == c.Field }>{ p.Name + "." + pf.Key }</option>
+						}
+					</optgroup>
+				}
+			}
+		</select>
+		<select class="select" name="cond_op" aria-label="operator" hx-get="/rules/rows/cond" hx-include="closest .cond-row" hx-target="closest .cond-row" hx-swap="outerHTML">
+			for _, o := range f.Ops {
+				<option value={ o.Name } selected?={ o.Name == op.Name }>{ o.Label }</option>
+			}
+		</select>
 		@condValue(f, op, c.Value)
-		@kit.RemoveButton(".cond-row")
-	}
+		<button type="button" class="x" aria-label="remove" onclick="this.closest('.cond-row').remove()">✕</button>
+	</div>
 }
 
 templ condValue(f Field, op Op, value string) {
 	if op.Multi {
-		@kit.TextInput(kit.InputOpts{Name: "cond_value", Value: value, Size: kit.SM, Mono: true, Placeholder: "comma, separated, values"})
+		<input class="input mono" name="cond_value" aria-label="value" value={ value } placeholder="comma, separated, values"/>
 	} else {
 		switch f.Kind {
 			case "enum":
-				@kit.Select(kit.SelectOpts{Name: "cond_value", Size: kit.SM, Selected: value}, valueOptions(f.Values))
+				@valueSelect(f.Values, value)
 			case "bool":
-				@kit.Select(kit.SelectOpts{Name: "cond_value", Size: kit.SM, Selected: boolSel(value)}, boolOptions())
+				@valueSelect([]string{"true", "false"}, boolSel(value))
 			case "coords":
-				@kit.TextInput(kit.InputOpts{Name: "cond_value", Value: value, Size: kit.SM, Mono: true, Placeholder: "{vars.home} 300m", List: "var-tokens", Title: "a coords value or variable, with an optional radius — defaults to 300m"})
+				<input class="input mono" name="cond_value" aria-label="value" value={ value } placeholder="{vars.home} 300m" list="var-tokens" title="a coords value or variable, with an optional radius (default 300m)"/>
 			default:
-				@kit.TextInput(kit.InputOpts{Name: "cond_value", Value: value, Size: kit.SM, Mono: true, Placeholder: f.Example, List: "var-tokens"})
+				<input class="input mono" name="cond_value" aria-label="value" value={ value } placeholder={ f.Example } list="var-tokens"/>
 		}
 	}
+}
+
+templ valueSelect(values []string, selected string) {
+	<select class="select" name="cond_value" aria-label="value">
+		for _, v := range values {
+			<option selected?={ v == selected }>{ v }</option>
+		}
+	</select>
 }
 
 templ ActRow(a ActRowVM) {
 	{{ opt := findAct(a.Key) }}
-	@kit.EditRow("act-row", kit.GridKeyValue) {
-		@kit.Select(kit.SelectOpts{Name: "act_key", Size: kit.SM, Selected: a.Key, Refresh: &kit.Refresh{URL: "/rules/rows/act", Row: ".act-row"}}, actSelOptions())
+	<div class="act-row">
+		<select class="select" name="act_key" aria-label="action" hx-get="/rules/rows/act" hx-include="closest .act-row" hx-target="closest .act-row" hx-swap="outerHTML">
+			for _, o := range ActOptions {
+				<option value={ o.Key } selected?={ o.Key == a.Key }>{ o.Label }</option>
+			}
+		</select>
 		if opt.Bool {
-			@kit.Select(kit.SelectOpts{Name: "act_template", Size: kit.SM, Fit: true, Selected: boolSel(a.Template)}, boolOptions())
+			<select class="select" name="act_template" aria-label="value">
+				<option selected?={ boolSel(a.Template) == "true" }>true</option>
+				<option selected?={ boolSel(a.Template) == "false" }>false</option>
+			</select>
 		} else {
-			@kit.TextInput(kit.InputOpts{Name: "act_template", Value: a.Template, Size: kit.SM, Mono: true, TokenTarget: true, Placeholder: "{parkrun.event_name} #{parkrun.event_number}", Title: `\n inserts a line break in descriptions`})
+			<input class="input mono template-input" name="act_template" aria-label="template" value={ a.Template } placeholder="{parkrun.event_name} #{parkrun.event_number}" title="\n inserts a line break in descriptions"/>
 		}
-		@kit.RemoveButton(".act-row")
-	}
+		<button type="button" class="x" aria-label="remove" onclick="this.closest('.act-row').remove()">✕</button>
+	</div>
 }
 
 templ TokenRef(catalog []Provider) {
-	@kit.Collapse("Available template tokens") {
-		@kit.Hint() {
-			Tokens work in action templates and condition values alike. Click one to insert it into the focused action input.
-		}
-		@kit.Grid2(6, 1) {
-			for _, p := range catalog {
-				if len(p.Fields) > 0 {
-					@kit.Small() {
-						@kit.GroupHeading(p.Name, p.Note)
-						for _, f := range p.Fields {
-							@kit.TokenLine("{"+p.Name+"."+f.Key+"}", f.Example)
+	<div class="tokens">
+		for _, p := range catalog {
+			if len(p.Fields) > 0 {
+				<section class="sec">
+					<h2>
+						{ p.Name }
+						if p.Note != "" {
+							<span>({ p.Note })</span>
 						}
-					}
-				}
+					</h2>
+					<dl>
+						for _, f := range p.Fields {
+							<div class="kv"><dt><button type="button" data-token={ "{" + p.Name + "." + f.Key + "}" }>{ "{" + p.Name + "." + f.Key + "}" }</button></dt><dd>{ f.Example }</dd></div>
+						}
+					</dl>
+				</section>
 			}
 		}
-	}
+	</div>
+}
+
+templ tokenScript() {
+	<script>
+		let lastTemplateInput = null;
+		document.addEventListener('focusin', (e) => {
+			if (e.target.classList && e.target.classList.contains('template-input')) lastTemplateInput = e.target;
+		});
+		document.addEventListener('click', (e) => {
+			const b = e.target.closest('[data-token]');
+			if (!b) return;
+			const el = lastTemplateInput || document.querySelector('.template-input');
+			if (!el) return;
+			const start = el.selectionStart ?? el.value.length;
+			const end = el.selectionEnd ?? start;
+			el.value = el.value.slice(0, start) + b.dataset.token + el.value.slice(end);
+			el.focus();
+			el.selectionStart = el.selectionEnd = start + b.dataset.token.length;
+		});
+	</script>
 }

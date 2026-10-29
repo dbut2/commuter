@@ -1,80 +1,49 @@
 package web
 
-import "dbut.dev/x/kit"
-
-templ SettingsPage(parkrunID string, segments []SegmentRow, saved bool, initials string) {
-	@kit.AppShell("Settings | commuter", nav("", initials)) {
-		@kit.Page(kit.WidthNarrow) {
-			@kit.Title("Settings")
+templ SettingsPage(parkrunID string, segments []SegmentRow, saved bool, n Nav) {
+	@shell("Settings", n) {
+		<div class="path">
+			<h1>settings</h1>
 			if saved {
-				@kit.Alert(kit.Success) {
-					Saved.
-				}
+				<p class="notice"><span class="led on"></span>saved</p>
 			}
-			@kit.Card() {
-				@kit.CardBody(kit.BodyOpts{Pad: 5, Gap: 3}) {
-					@kit.SectionLabel("parkrun")
-					@kit.Muted() {
-						Your parkrun athlete ID — the A-number on your barcode. Rules that use
-						@kit.Code("{parkrun.*}")
-						tokens are skipped until this is set.
+		</div>
+		<section class="sec">
+			<h2>parkrun</h2>
+			<p>Your parkrun athlete ID, the A-number on your barcode. Rules that use <code>{ "{parkrun.*}" }</code> tokens are skipped until it's set.</p>
+			<form class="inline-form" method="post" action="/settings/parkrun">
+				<input class="input mono short" name="parkrun_id" aria-label="parkrun athlete ID" value={ parkrunID } placeholder="A1234567" pattern="[Aa]?[0-9]*" title="A followed by digits, or empty to disconnect"/>
+				<button class="btn">save</button>
+			</form>
+		</section>
+		<section class="sec">
+			<h2>segments</h2>
+			<p>Strava segments to count laps of. Each adds a <code>{ "{segments.name_count}" }</code> field, the number of efforts on that segment in an activity.</p>
+			<table class="tbl">
+				<tbody>
+					for _, s := range segments {
+						<tr>
+							<td class="mono grow"><b>{ s.Name }</b></td>
+							<td class="mono small">{ s.SegmentID }</td>
+							<td><button class="btn quiet stop" form="segment-del" name="name" value={ s.Name } onclick="return confirm('Delete this segment?')">delete</button></td>
+						</tr>
 					}
-					@kit.Form(kit.FormOpts{Action: "/settings/parkrun", Row: true}) {
-						@kit.TextInput(kit.InputOpts{Name: "parkrun_id", Value: parkrunID, Size: kit.SM, W: "40", Mono: true, Placeholder: "A1234567", Pattern: "[Aa]?[0-9]*", Title: "A followed by digits, or empty to disconnect"})
-						@kit.Button("Save", kit.BtnOpts{Tone: kit.Primary, Size: kit.SM})
-					}
-				}
-			}
-			@kit.Card() {
-				@kit.CardBody(kit.BodyOpts{Pad: 5, Gap: 3}) {
-					@kit.SectionLabel("Segments")
-					@kit.Muted() {
-						Strava segments you want to count laps of. Each one adds a
-						@kit.Code("{segments.name_count}")
-						field — the number of efforts on that segment in an activity.
-					}
-					@kit.Table(kit.SM, []kit.Col{{Label: "Name"}, {Label: "Segment ID"}, {}}) {
-						for _, s := range segments {
-							@kit.TR(kit.RowStyle{Hover: true}) {
-								@kit.TD(kit.CellOpts{Mono: true, XS: true, Strong: true}) {
-									{ s.Name }
-								}
-								@kit.TD(kit.CellOpts{Mono: true, XS: true, Faint: true}) {
-									{ s.SegmentID }
-								}
-								@kit.TD(kit.CellOpts{Right: true}) {
-									@kit.Button("Delete", kit.BtnOpts{Ghost: true, Size: kit.XS, Danger: true, Form: "segment-del", Name: "name", Value: s.Name, Confirm: "Delete this segment?"})
-								}
-							}
-						}
-						@kit.TR(kit.RowStyle{Tint: true}) {
-							@kit.TD(kit.CellOpts{}) {
-								@kit.TextInput(kit.InputOpts{Form: "segment-add", Name: "name", Size: kit.XS, W: "24", Mono: true, Placeholder: "albert_park", Required: true, Pattern: "[a-zA-Z0-9_]+", Title: "letters, digits and underscores"})
-							}
-							@kit.TD(kit.CellOpts{}) {
-								@kit.TextInput(kit.InputOpts{Form: "segment-add", Name: "segment_id", Size: kit.XS, W: "32", Mono: true, Placeholder: "6408668", Required: true, Pattern: "[0-9]+", Title: "the number in strava.com/segments/…"})
-							}
-							@kit.TD(kit.CellOpts{Right: true}) {
-								@kit.Button("Add", kit.BtnOpts{Tone: kit.Primary, Size: kit.XS, Form: "segment-add"})
-							}
-						}
-					}
-					@kit.Hint() {
-						The segment ID is the number in the segment's URL, strava.com/segments/6408668. Adding a name that already exists replaces its segment ID.
-					}
-					@kit.Form(kit.FormOpts{ID: "segment-add", Action: "/settings/segments"})
-					@kit.Form(kit.FormOpts{ID: "segment-del", Action: "/settings/segments/delete"})
-				}
-			}
-			@kit.Card() {
-				@kit.CardBody(kit.BodyOpts{Pad: 5, Gap: 3}) {
-					@kit.SectionLabel("Account")
-					@kit.Row(kit.RowOpts{Gap: 2}) {
-						@kit.FormButton("/logout", "Log out", kit.BtnOpts{Size: kit.SM})
-						@kit.FormButton("/account/delete", "Delete account", kit.BtnOpts{Size: kit.SM, Outline: true, Tone: kit.Error, Confirm: "Delete your account and all its data? This cannot be undone."})
-					}
-				}
-			}
-		}
+					<tr class="add">
+						<td class="grow"><input class="input mono" form="segment-add" name="name" aria-label="name" placeholder="albert_park" required pattern="[a-zA-Z0-9_]+" title="letters, digits and underscores"/></td>
+						<td class="grow"><input class="input mono" form="segment-add" name="segment_id" aria-label="segment ID" placeholder="6408668" required pattern="[0-9]+" title="the number in strava.com/segments/…"/></td>
+						<td><button class="btn" form="segment-add">add</button></td>
+					</tr>
+				</tbody>
+			</table>
+			<form id="segment-add" method="post" action="/settings/segments"></form>
+			<form id="segment-del" method="post" action="/settings/segments/delete"></form>
+		</section>
+		<section class="sec">
+			<h2>account</h2>
+			<div class="bar">
+				<form class="inline" method="post" action="/logout"><button class="btn">log out</button></form>
+				<form class="inline" method="post" action="/account/delete"><button class="btn quiet stop" onclick="return confirm('Delete your account and all its data? This cannot be undone.')">delete account</button></form>
+			</div>
+		</section>
 	}
 }

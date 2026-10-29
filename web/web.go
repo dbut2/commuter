@@ -2,14 +2,16 @@ package web
 
 import (
 	"strconv"
+	"strings"
 
-	"dbut.dev/x/kit"
+	"github.com/a-h/templ"
 )
 
 type ActivityCard struct {
 	ID     string
 	Name   string
 	Meta   string
+	When   string
 	Status string
 	Note   string
 	Rules  []string
@@ -101,7 +103,7 @@ type ActivityPage struct {
 	ID        string
 	StravaID  int64
 	Name      string
-	Meta      string
+	Facts     [][2]string
 	Status    string
 	JobStatus string
 	JobError  string
@@ -125,68 +127,60 @@ type SegmentRow struct {
 	SegmentID string
 }
 
-func nav(active, initials string) kit.Nav {
-	return kit.Nav{
-		Brand:     "commuter",
-		BrandHref: "/activities",
-		Active:    active,
-		Initials:  initials,
-		Links: []kit.NavLink{
-			{Label: "Activities", Href: "/activities", Icon: "activity"},
-			{Label: "Rules", Href: "/rules", Icon: "list"},
-			{Label: "Variables", Href: "/vars", Icon: "layers"},
-		},
-		Menu: []kit.MenuEntry{
-			{Label: "Settings", Href: "/settings"},
-			{Label: "Log out", PostAction: "/logout"},
-		},
-	}
+type Nav struct {
+	Active   string
+	Pending  int
+	Failed   int
+	Rules    int
+	RulesOn  int
+	Vars     int
+	Parkrun  bool
+	Segments int
 }
 
-func statusTone(s string) kit.Tone {
-	switch s {
-	case "processed":
-		return kit.Success
-	case "pending":
-		return kit.Warning
-	case "failed":
-		return kit.Error
-	default:
-		return kit.Ghost
+func count(n int, one, many string) string {
+	if n == 1 {
+		return "1 " + one
 	}
+	return strconv.Itoa(n) + " " + many
 }
 
-func noteStyle(status string) kit.TextOpts {
-	switch status {
-	case "failed":
-		return kit.TextOpts{XS: true, Tone: kit.Error}
-	case "pending":
-		return kit.TextOpts{XS: true, Tone: kit.Warning}
+func (n Nav) activityLines() []string {
+	var lines []string
+	if n.Pending > 0 {
+		lines = append(lines, strconv.Itoa(n.Pending)+" pending")
 	}
-	return kit.TextOpts{XS: true, Faint: true}
+	if n.Failed > 0 {
+		lines = append(lines, strconv.Itoa(n.Failed)+" failed")
+	}
+	if len(lines) == 0 {
+		lines = append(lines, "all processed")
+	}
+	return lines
 }
 
-func runMark(status string) (mark string, tone kit.Tone) {
-	switch status {
-	case "applied":
-		return "✓", kit.Success
-	case "pending":
-		return "…", kit.Warning
-	default:
-		return "−", ""
+func (n Nav) ruleLines() []string {
+	return []string{count(n.Rules, "rule", "rules"), strconv.Itoa(n.RulesOn) + " on"}
+}
+
+func (n Nav) varLines() []string {
+	return []string{strconv.Itoa(n.Vars) + " saved"}
+}
+
+func (n Nav) settingLines() []string {
+	parkrun := "no parkrun ID"
+	if n.Parkrun {
+		parkrun = "parkrun linked"
 	}
+	return []string{parkrun, count(n.Segments, "segment", "segments")}
 }
 
 func runNote(r RunRow) string {
 	switch {
 	case r.Note != "":
 		return r.Note
-	case r.Status == "disabled":
-		return "disabled"
 	case r.Status == "no_match":
 		return "no match"
-	case r.Status == "applied":
-		return "applied"
 	}
 	return r.Status
 }
@@ -223,58 +217,11 @@ func findAct(key string) ActOption {
 	return ActOptions[0]
 }
 
-func fieldGroups(catalog []Provider) []kit.OptGroup {
-	var groups []kit.OptGroup
-	for _, p := range catalog {
-		if len(p.Fields) == 0 {
-			continue
-		}
-		g := kit.OptGroup{Label: p.Name}
-		for _, f := range p.Fields {
-			g.Options = append(g.Options, kit.Option{Value: p.Name + "." + f.Key})
-		}
-		groups = append(groups, g)
-	}
-	return groups
-}
-
-func opOptions(f Field) []kit.Option {
-	var opts []kit.Option
-	for _, o := range f.Ops {
-		opts = append(opts, kit.Option{Value: o.Name, Label: o.Label})
-	}
-	return opts
-}
-
-func valueOptions(values []string) []kit.Option {
-	var opts []kit.Option
-	for _, v := range values {
-		opts = append(opts, kit.Option{Value: v})
-	}
-	return opts
-}
-
-func boolOptions() []kit.Option {
-	return []kit.Option{{Value: "true"}, {Value: "false"}}
-}
-
 func boolSel(v string) string {
 	if v == "false" {
 		return "false"
 	}
 	return "true"
-}
-
-func actSelOptions() []kit.Option {
-	var opts []kit.Option
-	for _, a := range ActOptions {
-		opts = append(opts, kit.Option{Value: a.Key, Label: a.Label})
-	}
-	return opts
-}
-
-func typeOptions() []kit.Option {
-	return valueOptions(VarTypes)
 }
 
 func varTokens(catalog []Provider) []string {
@@ -293,3 +240,12 @@ func varTokens(catalog []Provider) []string {
 func stravaURL(id int64) string {
 	return "https://www.strava.com/activities/" + strconv.FormatInt(id, 10)
 }
+
+func current(on bool) templ.Attributes {
+	if on {
+		return templ.Attributes{"aria-current": "page"}
+	}
+	return nil
+}
+
+func joinRules(rules []string) string { return strings.Join(rules, ", ") }

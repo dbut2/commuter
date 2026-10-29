@@ -12,7 +12,6 @@ type Repo interface {
 
 	UpsertUser(ctx context.Context, stravaAthleteID int64, name string) (userID string, err error)
 	UserIDByStrava(ctx context.Context, stravaAthleteID int64) (string, error)
-	UserName(ctx context.Context, userID string) (string, error)
 	SetStravaToken(ctx context.Context, userID string, token []byte) error
 	DeleteUser(ctx context.Context, userID string) error
 
