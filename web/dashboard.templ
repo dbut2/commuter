@@ -1,56 +1,53 @@
 package web
 
-import "dbut.dev/x/kit"
+import "strconv"
 
-templ DashboardPage(d Dashboard, initials string) {
-	@kit.AppShell("Activities | commuter", nav("Activities", initials)) {
-		@kit.Page(kit.WidthNarrow) {
-			@kit.PageHeader("Activities") {
-				@kit.FormButton("/activities/sync", "Sync from Strava", kit.BtnOpts{Size: kit.SM, Outline: true})
-			}
-			@kit.Tabs() {
-				@kit.Tab("All", "/activities", d.Filter == "", 0, "")
-				@kit.Tab("Pending", "/activities?status=pending", d.Filter == "pending", d.PendingCount, kit.Warning)
-				@kit.Tab("Failed", "/activities?status=failed", d.Filter == "failed", d.FailedCount, kit.Error)
-			}
+templ DashboardPage(d Dashboard, n Nav) {
+	@shell("Activities", n) {
+		<div class="path">
+			<h1>activities</h1>
+			<form class="inline" method="post" action="/activities/sync">
+				<button class="btn">sync from strava →</button>
+			</form>
+		</div>
+		<div class="cols">
+			<section class="sec">
+				<h2>show</h2>
+				<div class="views">
+					<a href="/activities" { current(d.Filter == "")... }>all</a>
+					<a href="/activities?status=pending" { current(d.Filter == "pending")... }>pending <em>({ strconv.Itoa(d.PendingCount) })</em></a>
+					<a href="/activities?status=failed" { current(d.Filter == "failed")... }>failed <em>({ strconv.Itoa(d.FailedCount) })</em></a>
+				</div>
+			</section>
+		</div>
+		<div class="rows">
 			if len(d.Cards) == 0 {
-				@kit.Card() {
-					@kit.CardBody(kit.BodyOpts{Pad: 5}) {
-						@kit.Muted() {
-							No activities here yet. Uploads arrive via the Strava webhook and show up as they're processed.
-						}
-					}
-				}
+				<p class="empty">No activities here yet. Uploads arrive via the Strava webhook and show up as they're processed.</p>
 			}
-			@kit.Stack(3) {
-				for _, a := range d.Cards {
-					@activityCard(a)
-				}
+			for _, a := range d.Cards {
+				@activityRow(a)
 			}
-		}
+		</div>
 	}
 }
 
-templ activityCard(a ActivityCard) {
-	@kit.LinkCard("/activities/" + a.ID) {
-		@kit.CardBody(kit.BodyOpts{Pad: 4, Gap: 2}) {
-			@kit.Row(kit.RowOpts{Gap: 2}) {
-				@kit.T(a.Name, kit.TextOpts{Strong: true, Grow: true})
-				@kit.Badge(a.Status, kit.BadgeOpts{Tone: statusTone(a.Status), Size: kit.SM})
-			}
-			@kit.T(a.Meta, kit.TextOpts{XS: true, Faint: true, Block: true})
-			@kit.Row(kit.RowOpts{Gap: 2, Wrap: true}) {
-				if len(a.Rules) == 0 {
-					@kit.T("no rules matched", kit.TextOpts{XS: true, Faint: true})
-				}
-				for _, r := range a.Rules {
-					@kit.Badge(r, kit.BadgeOpts{Tone: kit.Primary, Outline: true, Size: kit.SM})
-				}
-				if a.Note != "" {
-					@kit.Spacer()
-					@kit.T(a.Note, noteStyle(a.Status))
-				}
-			}
+templ activityRow(a ActivityCard) {
+	<a class="row" href={ templ.URL("/activities/" + a.ID) }>
+		<span class={ "led " + a.Status } title={ a.Status }></span>
+		<div>
+			<div class="name">{ a.Name }</div>
+			<div class="meta">{ a.Meta }</div>
+		</div>
+		if len(a.Rules) == 0 {
+			<div class="fired none">no rules matched</div>
+		} else {
+			<div class="fired">{ joinRules(a.Rules) }</div>
 		}
-	}
+		<div class="when">
+			<span>{ a.When }</span>
+			if a.Note != "" {
+				<span class={ a.Status }>{ a.Note }</span>
+			}
+		</div>
+	</a>
 }

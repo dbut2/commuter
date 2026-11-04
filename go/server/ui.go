@@ -35,17 +35,36 @@ func (s *Server) requireUser(c *gin.Context) (string, bool) {
 	return uid, ok
 }
 
-func (s *Server) initials(ctx context.Context, userID string) string {
-	name, err := s.repo.UserName(ctx, userID)
-	if err != nil || name == "" {
-		return "?"
+func (s *Server) nav(ctx context.Context, userID, active string) web.Nav {
+	n := web.Nav{Active: active}
+	if feed, err := s.repo.Feed(ctx, userID); err == nil {
+		for _, it := range feed {
+			switch feedCard(it).Status {
+			case "pending":
+				n.Pending++
+			case "failed":
+				n.Failed++
+			}
+		}
 	}
-	parts := strings.Fields(name)
-	out := ""
-	for _, p := range parts[:min(len(parts), 2)] {
-		out += strings.ToUpper(p[:1])
+	if rules, err := s.repo.Rules(ctx, userID); err == nil {
+		n.Rules = len(rules)
+		for _, r := range rules {
+			if r.Enabled {
+				n.RulesOn++
+			}
+		}
 	}
-	return out
+	if vars, err := s.repo.Vars(ctx, userID); err == nil {
+		n.Vars = len(vars)
+	}
+	if id, err := s.repo.ParkrunID(ctx, userID); err == nil {
+		n.Parkrun = id != ""
+	}
+	if segs, err := s.repo.Segments(ctx, userID); err == nil {
+		n.Segments = len(segs)
+	}
+	return n
 }
 
 func fmtTime(t time.Time) string { return t.Local().Format("Mon 3:04 pm") }
@@ -92,18 +111,28 @@ func activityName(strava map[string]string, stravaID int64) string {
 
 func activityMeta(strava map[string]string) string {
 	var parts []string
-	add := func(s string) {
-		if s != "" {
-			parts = append(parts, s)
+	for _, f := range activityFacts(strava) {
+		if f[0] != "started" {
+			parts = append(parts, f[1])
 		}
 	}
-	add(strava["activity_time"])
-	add(strava["activity_type"])
-	if d := strava["activity_distance"]; d != "" {
-		add(d + " km")
+	return strings.Join(parts, ", ")
+}
+
+func activityFacts(strava map[string]string) [][2]string {
+	var facts [][2]string
+	add := func(k, v string) {
+		if v != "" {
+			facts = append(facts, [2]string{k, v})
+		}
 	}
-	add(strava["activity_moving_duration"])
-	return strings.Join(parts, " | ")
+	add("started", strava["activity_time"])
+	add("type", strava["activity_type"])
+	if d := strava["activity_distance"]; d != "" {
+		add("distance", d+" km")
+	}
+	add("moving time", strava["activity_moving_duration"])
+	return facts
 }
 
 func feedCard(it store.FeedItem) web.ActivityCard {
@@ -111,6 +140,7 @@ func feedCard(it store.FeedItem) web.ActivityCard {
 		ID:     it.ActivityID,
 		Name:   activityName(it.Strava, it.StravaID),
 		Meta:   activityMeta(it.Strava),
+		When:   it.Strava["activity_time"],
 		Status: it.Status,
 		Rules:  it.AppliedRules,
 	}
@@ -154,7 +184,7 @@ func (s *Server) activitiesPage(c *gin.Context) {
 			d.Cards = append(d.Cards, card)
 		}
 	}
-	s.render(c, http.StatusOK, web.DashboardPage(d, s.initials(ctx, userID)))
+	s.render(c, http.StatusOK, web.DashboardPage(d, s.nav(ctx, userID, "activities")))
 }
 
 func (s *Server) activitiesSync(c *gin.Context) {
@@ -188,7 +218,7 @@ func (s *Server) activityPage(c *gin.Context) {
 		ID:       info.ActivityID,
 		StravaID: info.StravaID,
 		Name:     activityName(info.Strava, info.StravaID),
-		Meta:     activityMeta(info.Strava),
+		Facts:    activityFacts(info.Strava),
 		Status:   info.Status,
 	}
 	if j := info.Job; j != nil {
@@ -215,7 +245,7 @@ func (s *Server) activityPage(c *gin.Context) {
 		}
 		vm.Providers = append(vm.Providers, pd)
 	}
-	s.render(c, http.StatusOK, web.ActivityDetailPage(vm, s.initials(ctx, userID)))
+	s.render(c, http.StatusOK, web.ActivityDetailPage(vm, s.nav(ctx, userID, "activities")))
 }
 
 func (s *Server) activityRerun(c *gin.Context) {
@@ -297,7 +327,7 @@ func (s *Server) rulesPage(c *gin.Context) {
 			Then: actSummary(r.Acts),
 		}
 	}
-	s.render(c, http.StatusOK, web.RulesPage(rows, s.initials(ctx, userID)))
+	s.render(c, http.StatusOK, web.RulesPage(rows, s.nav(ctx, userID, "rules")))
 }
 
 func (s *Server) ruleToggle(c *gin.Context) {
@@ -365,7 +395,7 @@ func (s *Server) ruleEditor(c *gin.Context) {
 	if len(vm.Acts) == 0 {
 		vm.Acts = []web.ActRowVM{{Key: "title"}}
 	}
-	s.render(c, http.StatusOK, web.EditorPage(vm, s.initials(ctx, userID)))
+	s.render(c, http.StatusOK, web.EditorPage(vm, s.nav(ctx, userID, "rules")))
 }
 
 func parseRuleForm(c *gin.Context) (engine.Rule, []web.CondRowVM, []web.ActRowVM) {
@@ -444,7 +474,7 @@ func (s *Server) ruleSave(c *gin.Context) {
 	r.ID = c.Query("id")
 	if msg := validateRule(catalog, r); msg != "" {
 		vm := web.Editor{ID: r.ID, Name: r.Name, Enabled: r.Enabled, Conds: condVMs, Acts: actVMs, Catalog: catalog, Error: msg}
-		s.render(c, http.StatusUnprocessableEntity, web.EditorPage(vm, s.initials(ctx, userID)))
+		s.render(c, http.StatusUnprocessableEntity, web.EditorPage(vm, s.nav(ctx, userID, "rules")))
 		return
 	}
 	if r.ID == "" {
@@ -529,7 +559,7 @@ func (s *Server) settingsPage(c *gin.Context) {
 	for i, seg := range segments {
 		rows[i] = web.SegmentRow{Name: seg.Name, SegmentID: strconv.FormatInt(seg.SegmentID, 10)}
 	}
-	s.render(c, http.StatusOK, web.SettingsPage(parkrunID, rows, c.Query("saved") != "", s.initials(ctx, userID)))
+	s.render(c, http.StatusOK, web.SettingsPage(parkrunID, rows, c.Query("saved") != "", s.nav(ctx, userID, "settings")))
 }
 
 func (s *Server) settingsParkrun(c *gin.Context) {
@@ -627,7 +657,7 @@ func (s *Server) varsPage(c *gin.Context) {
 		}
 		rows[i] = web.VarRow{Name: v.Name, Type: v.Type, Value: v.Value, Used: usedLabel}
 	}
-	s.render(c, http.StatusOK, web.VarsPage(rows, s.initials(ctx, userID)))
+	s.render(c, http.StatusOK, web.VarsPage(rows, s.nav(ctx, userID, "variables")))
 }
 
 func validVarName(s string) bool {
