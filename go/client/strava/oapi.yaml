@@ -1,0 +1,8 @@
+package: strava
+generate:
+  models: true
+  client: true
+output: strava/strava.gen.go
+output-options:
+  overlay:
+    path: strava/overlay.yaml

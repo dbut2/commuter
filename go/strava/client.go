@@ -2,10 +2,9 @@ package strava
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
-
-	"github.com/antihax/optional"
 
 	"dbut.dev/commuter/go/core"
 
@@ -30,35 +29,37 @@ func (u ActivityUpdate) Empty() bool {
 }
 
 type stravaClient struct {
-	api *api.APIClient
+	api *api.ClientWithResponses
 }
 
 func NewClient(httpClient *http.Client) StravaAPI {
-	cfg := api.NewConfiguration()
-	cfg.HTTPClient = httpClient
-	return &stravaClient{api: api.NewAPIClient(cfg)}
+	return &stravaClient{api: &api.ClientWithResponses{
+		ClientInterface: &api.Client{Server: "https://www.strava.com/api/v3/", Client: httpClient},
+	}}
 }
 
 func (c *stravaClient) GetActivity(ctx context.Context, id int64) (core.Activity, error) {
-	a, _, err := c.api.ActivitiesApi.GetActivityById(ctx, id, &api.ActivitiesApiGetActivityByIdOpts{
-		IncludeAllEfforts: optional.NewBool(true),
-	})
+	resp, err := c.api.GetActivityByIdWithResponse(ctx, id, &api.GetActivityByIdParams{IncludeAllEfforts: new(true)})
 	if err != nil {
 		return core.Activity{}, err
 	}
-	return toCore(a), nil
+	if resp.JSON200 == nil {
+		return core.Activity{}, fmt.Errorf("get activity %d: %s", id, resp.Status())
+	}
+	return toCore(resp.JSON200), nil
 }
 
 func (c *stravaClient) ListActivities(ctx context.Context, perPage int) ([]int64, error) {
-	acts, _, err := c.api.ActivitiesApi.GetLoggedInAthleteActivities(ctx, &api.ActivitiesApiGetLoggedInAthleteActivitiesOpts{
-		PerPage: optional.NewInt32(int32(perPage)),
-	})
+	resp, err := c.api.GetLoggedInAthleteActivitiesWithResponse(ctx, &api.GetLoggedInAthleteActivitiesParams{PerPage: &perPage})
 	if err != nil {
 		return nil, err
 	}
-	ids := make([]int64, len(acts))
-	for i, a := range acts {
-		ids[i] = a.Id
+	if resp.JSON200 == nil {
+		return nil, fmt.Errorf("list activities: %s", resp.Status())
+	}
+	ids := make([]int64, len(*resp.JSON200))
+	for i, a := range *resp.JSON200 {
+		ids[i] = deref(a.Id)
 	}
 	return ids, nil
 }
@@ -67,56 +68,58 @@ func (c *stravaClient) UpdateActivity(ctx context.Context, id int64, upd Activit
 	if upd.Empty() {
 		return nil
 	}
-	var body api.UpdatableActivity
-	if upd.Name != nil {
-		body.Name = *upd.Name
-	}
-	if upd.Description != nil {
-		body.Description = *upd.Description
-	}
-	if upd.Commute != nil {
-		body.Commute = *upd.Commute
-	}
-	if upd.HideFromHome != nil {
-		body.HideFromHome = *upd.HideFromHome
-	}
-	_, _, err := c.api.ActivitiesApi.UpdateActivityById(ctx, id, &api.ActivitiesApiUpdateActivityByIdOpts{
-		Body: optional.NewInterface(body),
+	resp, err := c.api.UpdateActivityByIdWithResponse(ctx, id, api.UpdatableActivity{
+		Name:         upd.Name,
+		Description:  upd.Description,
+		Commute:      upd.Commute,
+		HideFromHome: upd.HideFromHome,
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	if resp.JSON200 == nil {
+		return fmt.Errorf("update activity %d: %s", id, resp.Status())
+	}
+	return nil
 }
 
-func toCore(a api.DetailedActivity) core.Activity {
-	loc := func(p *[2]float64) [2]float64 {
-		if p != nil {
-			return *p
-		}
-		return [2]float64{}
+func deref[T any](p *T) T {
+	if p == nil {
+		var zero T
+		return zero
 	}
-	typ := ""
-	if a.SportType != nil {
-		typ = string(*a.SportType)
-	} else if a.Type_ != nil {
-		typ = string(*a.Type_)
+	return *p
+}
+
+func toCore(a *api.DetailedActivity) core.Activity {
+	loc := func(p *api.LatLng) [2]float64 {
+		if p == nil || len(*p) != 2 {
+			return [2]float64{}
+		}
+		return [2]float64{float64((*p)[0]), float64((*p)[1])}
+	}
+	typ := string(deref(a.SportType))
+	if typ == "" {
+		typ = string(deref(a.Type))
 	}
 	var efforts []core.SegmentEffort
-	for _, se := range a.SegmentEfforts {
+	for _, se := range deref(a.SegmentEfforts) {
 		if se.Segment == nil {
 			continue
 		}
-		efforts = append(efforts, core.SegmentEffort{SegmentID: se.Segment.Id, Name: se.Segment.Name})
+		efforts = append(efforts, core.SegmentEffort{SegmentID: deref(se.Segment.Id), Name: deref(se.Segment.Name)})
 	}
 	return core.Activity{
-		ID:              int(a.Id),
-		Name:            a.Name,
-		Description:     a.Description,
+		ID:              int(deref(a.Id)),
+		Name:            deref(a.Name),
+		Description:     deref(a.Description),
 		Type:            typ,
-		Commute:         a.Commute,
-		Hidden:          a.HideFromHome,
-		Time:            a.StartDateLocal,
-		Distance:        float64(a.Distance),
-		MovingDuration:  time.Duration(a.MovingTime) * time.Second,
-		ElapsedDuration: time.Duration(a.ElapsedTime) * time.Second,
+		Commute:         deref(a.Commute),
+		Hidden:          deref(a.HideFromHome),
+		Time:            deref(a.StartDateLocal),
+		Distance:        float64(deref(a.Distance)),
+		MovingDuration:  time.Duration(deref(a.MovingTime)) * time.Second,
+		ElapsedDuration: time.Duration(deref(a.ElapsedTime)) * time.Second,
 		StartLoc:        loc(a.StartLatlng),
 		EndLoc:          loc(a.EndLatlng),
 		SegmentEfforts:  efforts,

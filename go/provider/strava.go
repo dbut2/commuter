@@ -24,12 +24,12 @@ var weekdays = []string{
 }
 
 var sportTypes = []string{
-	string(strava.HIKE_SportType),
-	string(strava.RIDE_SportType),
-	string(strava.RUN_SportType),
-	string(strava.SWIM_SportType),
-	string(strava.WALK_SportType),
-	string(strava.WORKOUT_SportType),
+	string(strava.SportTypeHike),
+	string(strava.SportTypeRide),
+	string(strava.SportTypeRun),
+	string(strava.SportTypeSwim),
+	string(strava.SportTypeWalk),
+	string(strava.SportTypeWorkout),
 }
 
 var stravaData = []core.Field{

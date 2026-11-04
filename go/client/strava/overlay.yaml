@@ -1,0 +1,16 @@
+overlay: 1.0.0
+info:
+  title: Strava spec fixes
+  version: 1.0.0
+actions:
+  - target: $.paths['/athlete'].put.parameters[?(@.name == 'weight')]
+    update:
+      in: query
+  - target: $.paths['/athletes/{id}/routes'].get.parameters
+    update:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
