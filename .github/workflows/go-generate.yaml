@@ -43,5 +43,6 @@ jobs:
           labels: automerge
           commit-message: "tech: generate"
           title: "tech: generate"
+          body: beep boop beep boop, I've regenerated some code for you
           author: dylan-botler[bot] <230545208+dylan-botler[bot]@users.noreply.github.com>
           committer: dylan-botler[bot] <230545208+dylan-botler[bot]@users.noreply.github.com>
