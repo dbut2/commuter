@@ -1,0 +1,48 @@
+# DO NOT EDIT. Synced from dbut2/x
+# https://github.com/dbut2/x/blob/main/workflow-sync/workflows/renovate-generate.yaml
+
+name: Renovate Generate
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    if: github.actor == 'renovate[bot]'
+    steps:
+      - name: Generate token
+        id: token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.GH_CLIENT_ID }}
+          private-key: ${{ secrets.GH_PRIVATE_KEY }}
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ steps.token.outputs.token }}
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: ./go.mod
+
+      - working-directory: .
+        run: go generate ./...
+
+      - id: commit
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: go generate
+          commit_user_name: dylan-botler[bot]
+          commit_user_email: 230545208+dylan-botler[bot]@users.noreply.github.com
+          commit_author: dylan-botler[bot] <230545208+dylan-botler[bot]@users.noreply.github.com>
+
+      - if: steps.commit.outputs.changes_detected == 'true'
+        run: gh pr edit "$PR_URL" --add-label automerge
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ steps.token.outputs.token }}
