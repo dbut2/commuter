@@ -1429,6 +1429,9 @@ type DetailedActivity struct {
 	// Id The unique identifier of the activity
 	Id *int64 `json:"id,omitempty"`
 
+	// IdStr The unique identifier of the upload in string format
+	IdStr *string `json:"id_str,omitempty"`
+
 	// Kilojoules The total work done in kilojoules during this activity. Rides only
 	Kilojoules *float32 `json:"kilojoules,omitempty"`
 
@@ -1452,7 +1455,7 @@ type DetailedActivity struct {
 	// Name The name of the activity
 	Name *string `json:"name,omitempty"`
 
-	// PhotoCount The number of Instagram photos for this activity
+	// PhotoCount Deprecated, use total_photo_count
 	PhotoCount *int           `json:"photo_count,omitempty"`
 	Photos     *PhotosSummary `json:"photos,omitempty"`
 
@@ -1487,7 +1490,7 @@ type DetailedActivity struct {
 	// TotalElevationGain The activity's total elevation gain.
 	TotalElevationGain *float32 `json:"total_elevation_gain,omitempty"`
 
-	// TotalPhotoCount The number of Instagram and Strava photos for this activity
+	// TotalPhotoCount The number of media items (photo & video) attached to this activity
 	TotalPhotoCount *int `json:"total_photo_count,omitempty"`
 
 	// Trainer Whether this activity was recorded on a training machine
@@ -1543,6 +1546,9 @@ type DetailedAthlete struct {
 
 	// Id The unique identifier of the athlete
 	Id *int64 `json:"id,omitempty"`
+
+	// IdStr The unique identifier of the upload in string format
+	IdStr *string `json:"id_str,omitempty"`
 
 	// Lastname The athlete's last name.
 	Lastname *string `json:"lastname,omitempty"`
@@ -2022,6 +2028,9 @@ type MetaActivity struct {
 type MetaAthlete struct {
 	// Id The unique identifier of the athlete
 	Id *int64 `json:"id,omitempty"`
+
+	// IdStr The unique identifier of the upload in string format
+	IdStr *string `json:"id_str,omitempty"`
 }
 
 // MetaClub defines model for MetaClub.
@@ -2305,6 +2314,9 @@ type SummaryActivity struct {
 	// Id The unique identifier of the activity
 	Id *int64 `json:"id,omitempty"`
 
+	// IdStr The unique identifier of the upload in string format
+	IdStr *string `json:"id_str,omitempty"`
+
 	// Kilojoules The total work done in kilojoules during this activity. Rides only
 	Kilojoules *float32 `json:"kilojoules,omitempty"`
 
@@ -2327,7 +2339,7 @@ type SummaryActivity struct {
 	// Name The name of the activity
 	Name *string `json:"name,omitempty"`
 
-	// PhotoCount The number of Instagram photos for this activity
+	// PhotoCount Deprecated, use total_photo_count
 	PhotoCount *int `json:"photo_count,omitempty"`
 
 	// Private Whether this activity is private
@@ -2354,7 +2366,7 @@ type SummaryActivity struct {
 	// TotalElevationGain The activity's total elevation gain.
 	TotalElevationGain *float32 `json:"total_elevation_gain,omitempty"`
 
-	// TotalPhotoCount The number of Instagram and Strava photos for this activity
+	// TotalPhotoCount The number of media items (photo & video) attached to this activity
 	TotalPhotoCount *int `json:"total_photo_count,omitempty"`
 
 	// Trainer Whether this activity was recorded on a training machine
@@ -2395,6 +2407,9 @@ type SummaryAthlete struct {
 
 	// Id The unique identifier of the athlete
 	Id *int64 `json:"id,omitempty"`
+
+	// IdStr The unique identifier of the upload in string format
+	IdStr *string `json:"id_str,omitempty"`
 
 	// Lastname The athlete's last name.
 	Lastname *string `json:"lastname,omitempty"`
@@ -2681,6 +2696,9 @@ type UpdatableActivity struct {
 
 	// Type An enumeration of the types an activity may have. Note that this enumeration does not include new sport types (e.g. MountainBikeRide, EMountainBikeRide), activities with these sport types will have the corresponding activity type (e.g. Ride for MountainBikeRide, EBikeRide for EMountainBikeRide)
 	Type *ActivityType `json:"type,omitempty"`
+
+	// Visibility The visibility of the activity. Can only be set to a more restrictive visibility setting than currently set on the activity (Followers Only or Only Me) by passing followers_only or only_me
+	Visibility *string `json:"visibility,omitempty"`
 }
 
 // Upload defines model for Upload.
@@ -2780,6 +2798,9 @@ type CreateActivityFormdataBody struct {
 
 	// Type Type of activity. For example - Run, Ride etc.
 	Type *string `form:"type,omitempty" json:"type,omitempty"`
+
+	// Visibility Set the activity's visibility to a more restrictive visibility setting (Followers Only or Only Me) by passing followers_only or only_me
+	Visibility *string `form:"visibility,omitempty" json:"visibility,omitempty"`
 }
 
 // GetActivityByIdParams defines parameters for GetActivityById.
@@ -2960,6 +2981,9 @@ type CreateUploadMultipartBody struct {
 
 	// Trainer Whether the resulting activity should be marked as having been performed on a trainer.
 	Trainer *string `json:"trainer,omitempty"`
+
+	// Visibility Set the activity's visibility to a more restrictive visibility setting (Followers Only or Only Me) by passing followers_only or only_me
+	Visibility *string `json:"visibility,omitempty"`
 }
 
 // CreateUploadMultipartBodyDataType defines parameters for CreateUpload.
