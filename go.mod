@@ -9,7 +9,7 @@ require (
 	github.com/jackc/pgx/v5 v5.13.0
 	github.com/lib/pq v1.12.3
 	github.com/oapi-codegen/runtime v1.9.1
-	github.com/pressly/goose/v3 v3.30.1
+	github.com/pressly/goose/v3 v3.30.2
 	github.com/riverqueue/river v0.51.2
 	github.com/riverqueue/river/riverdriver/riverdatabasesql v0.51.2
 	github.com/riverqueue/river/rivertype v0.51.2
@@ -104,7 +104,6 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/riza-io/grpc-go v0.2.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3 // indirect
-	github.com/sethvargo/go-retry v0.5.0 // indirect
 	github.com/speakeasy-api/jsonpath v0.6.3 // indirect
 	github.com/speakeasy-api/openapi v1.25.6-0.20261015113746-577889a836ef // indirect
 	github.com/speakeasy-api/openapi/cmd/openapi v0.0.0-20261015115120-81ce5432ccf9 // indirect
