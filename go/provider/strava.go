@@ -28,6 +28,7 @@ var sportTypes = []string{
 	string(strava.SportTypeRide),
 	string(strava.SportTypeRun),
 	string(strava.SportTypeSwim),
+	string(strava.SportTypeVirtualRide),
 	string(strava.SportTypeWalk),
 	string(strava.SportTypeWorkout),
 }
